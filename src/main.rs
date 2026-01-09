@@ -28,8 +28,8 @@ fn main() -> Result<()> {
     // Set up better panic handler
     color_eyre::install()?;
 
-    // Discover tasks from just
-    let tasks = match tasks::just::discover_tasks() {
+    // Discover tasks from all available sources (Just and Make)
+    let tasks = match tasks::discover_all_tasks() {
         Ok(tasks) => tasks,
         Err(e) => {
             // If discovery fails, create an AppState with the error
@@ -174,7 +174,7 @@ fn handle_key_event(
             if app.is_task_running() {
                 app.set_message("Cannot reload tasks while a task is running.".to_string());
             } else {
-                match tasks::just::discover_tasks() {
+                match tasks::discover_all_tasks() {
                     Ok(new_tasks) => {
                         app.reload_tasks(new_tasks);
                     }

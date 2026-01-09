@@ -65,10 +65,9 @@ fn render_status_bar(frame: &mut Frame, app: &AppState, area: Rect) {
         format!("Taskpad | {}", msg)
     } else if let Some(ref running) = app.running_task {
         match running.status {
-            TaskStatus::Running => format!("Taskpad | Running: {}", running.task.name),
-            TaskStatus::Success(code) => format!("Taskpad | Last: {} (exit={})", running.task.name, code),
-            TaskStatus::Failed(code) => format!("Taskpad | Failed: {} (exit={})", running.task.name, code),
-            TaskStatus::Idle => "Taskpad | Idle".to_string(),
+            TaskStatus::Running => format!("Taskpad | Running: {} {}", running.task.runner.prefix(), running.task.name),
+            TaskStatus::Success(code) => format!("Taskpad | Last: {} {} (exit={})", running.task.runner.prefix(), running.task.name, code),
+            TaskStatus::Failed(code) => format!("Taskpad | Failed: {} {} (exit={})", running.task.runner.prefix(), running.task.name, code),
         }
     } else {
         "Taskpad | Idle".to_string()
@@ -138,24 +137,34 @@ fn render_task_list(frame: &mut Frame, app: &AppState, area: Rect) {
                 "  "
             };
 
-            let content = if let Some(ref desc) = task.description {
-                format!("{}{} - {}", prefix, task.name, desc)
-            } else {
-                format!("{}{}", prefix, task.name)
-            };
+            // Create styled line with bold runner prefix
+            let mut spans = vec![
+                Span::raw(prefix),
+                Span::styled(
+                    format!("{} ", task.runner.prefix()),
+                    Style::default().add_modifier(Modifier::BOLD).fg(Color::Cyan)
+                ),
+                Span::raw(&task.name),
+            ];
+
+            if let Some(ref desc) = task.description {
+                spans.push(Span::raw(" - "));
+                spans.push(Span::styled(desc, Style::default().fg(Color::Gray)));
+            }
+
+            let line = Line::from(spans);
 
             let style = if is_selected {
                 Style::default()
-                    .fg(Color::Black)
                     .bg(Color::White)
-                    .add_modifier(Modifier::BOLD)
+                    .fg(Color::Black)
             } else if is_running {
                 Style::default().fg(Color::Yellow)
             } else {
                 Style::default()
             };
 
-            ListItem::new(content).style(style)
+            ListItem::new(line).style(style)
         })
         .collect();
 
@@ -166,7 +175,7 @@ fn render_task_list(frame: &mut Frame, app: &AppState, area: Rect) {
 /// Renders the log pane on the right side showing task output.
 fn render_log_pane(frame: &mut Frame, app: &AppState, area: Rect) {
     let title = if let Some(ref running) = app.running_task {
-        format!("Logs - {}", running.task.name)
+        format!("Logs - {} {}", running.task.runner.prefix(), running.task.name)
     } else {
         "Logs".to_string()
     };

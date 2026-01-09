@@ -3,7 +3,7 @@
 /// This module provides functionality to discover available Just recipes
 /// in the current directory by running `just --list` and parsing its output.
 
-use crate::app::Task;
+use crate::app::{Task, TaskRunner};
 use color_eyre::eyre::{eyre, Result};
 use std::process::Command;
 
@@ -128,6 +128,7 @@ fn parse_just_list_output(output: &str) -> Result<Vec<Task>> {
             id: task_id,
             name: name.to_string(),
             description,
+            runner: TaskRunner::Just,
         });
 
         task_id += 1;
