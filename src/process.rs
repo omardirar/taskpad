@@ -1,7 +1,7 @@
-/// Process execution module.
-///
-/// This module handles running tasks as subprocesses and streaming
-/// their output back to the main thread via channels.
+//! Process execution module.
+//!
+//! This module handles running tasks as subprocesses and streaming
+//! their output back to the main thread via channels.
 
 use crate::app::{Task, TaskStatus};
 use std::io::{BufRead, BufReader};

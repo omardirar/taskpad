@@ -1,7 +1,7 @@
-/// Taskpad - A keyboard-driven TUI task launcher with first-class support for just recipes.
-///
-/// This is the main entry point that sets up the terminal, discovers tasks,
-/// and runs the main event loop.
+//! Taskpad - A keyboard-driven TUI task launcher with first-class support for just recipes.
+//!
+//! This is the main entry point that sets up the terminal, discovers tasks,
+//! and runs the main event loop.
 
 mod app;
 mod process;
@@ -57,12 +57,11 @@ fn run_app_with_error(app: AppState) -> Result<()> {
 
     // Wait for 'q' key to quit
     loop {
-        if event::poll(Duration::from_millis(100))? {
-            if let Event::Key(key) = event::read()? {
-                if key.kind == KeyEventKind::Press && key.code == KeyCode::Char('q') {
-                    break;
-                }
-            }
+        if event::poll(Duration::from_millis(100))?
+            && let Event::Key(key) = event::read()?
+            && key.kind == KeyEventKind::Press && key.code == KeyCode::Char('q')
+        {
+            break;
         }
     }
 
@@ -107,13 +106,13 @@ fn run_app(mut app: AppState) -> Result<()> {
             }
         }
 
-        if let Some(ref rx) = status_rx {
-            if let Ok(status) = rx.try_recv() {
-                app.update_task_status(status);
-                // Task finished, clear the receivers
-                log_rx = None;
-                status_rx = None;
-            }
+        if let Some(ref rx) = status_rx
+            && let Ok(status) = rx.try_recv()
+        {
+            app.update_task_status(status);
+            // Task finished, clear the receivers
+            log_rx = None;
+            status_rx = None;
         }
 
         // Handle auto-scroll during drag selection
@@ -302,27 +301,27 @@ fn handle_mouse_event(
 
         // Handle mouse drag for text selection
         MouseEventKind::Drag(MouseButton::Left) => {
-            if app.is_selecting && mouse.column >= TASK_LIST_WIDTH && mouse.row >= 2 {
-                if let Some(pos) = screen_to_log_position(app, mouse.column, mouse.row, terminal_height) {
-                    app.update_selection(pos);
+            if app.is_selecting && mouse.column >= TASK_LIST_WIDTH && mouse.row >= 2
+                && let Some(pos) = screen_to_log_position(app, mouse.column, mouse.row, terminal_height)
+            {
+                app.update_selection(pos);
 
-                    // Check if we should auto-scroll
-                    // Top edge threshold: within 3 rows of top of logs (row 2 + 3 = 5)
-                    // Bottom edge threshold: within 3 rows of bottom of terminal (terminal_height - 3)
-                    const SCROLL_THRESHOLD: u16 = 3;
-                    let log_top = 2; // Top bar (1) + log border (1)
-                    let log_bottom = terminal_height.saturating_sub(1); // Bottom bar (1)
+                // Check if we should auto-scroll
+                // Top edge threshold: within 3 rows of top of logs (row 2 + 3 = 5)
+                // Bottom edge threshold: within 3 rows of bottom of terminal (terminal_height - 3)
+                const SCROLL_THRESHOLD: u16 = 3;
+                let log_top = 2; // Top bar (1) + log border (1)
+                let log_bottom = terminal_height.saturating_sub(1); // Bottom bar (1)
 
-                    if mouse.row <= log_top + SCROLL_THRESHOLD {
-                        // Near top edge - scroll up
-                        app.set_drag_scroll(Some(app::DragScrollDirection::Up), Some(pos));
-                    } else if mouse.row >= log_bottom.saturating_sub(SCROLL_THRESHOLD) {
-                        // Near bottom edge - scroll down
-                        app.set_drag_scroll(Some(app::DragScrollDirection::Down), Some(pos));
-                    } else {
-                        // Not near edges - stop auto-scrolling
-                        app.set_drag_scroll(None, Some(pos));
-                    }
+                if mouse.row <= log_top + SCROLL_THRESHOLD {
+                    // Near top edge - scroll up
+                    app.set_drag_scroll(Some(app::DragScrollDirection::Up), Some(pos));
+                } else if mouse.row >= log_bottom.saturating_sub(SCROLL_THRESHOLD) {
+                    // Near bottom edge - scroll down
+                    app.set_drag_scroll(Some(app::DragScrollDirection::Down), Some(pos));
+                } else {
+                    // Not near edges - stop auto-scrolling
+                    app.set_drag_scroll(None, Some(pos));
                 }
             }
         }
@@ -382,11 +381,7 @@ fn screen_to_log_position(app: &AppState, screen_col: u16, screen_row: u16, term
 
     let visible_start = if app.log_auto_scroll && app.log_scroll_offset == 0 {
         // Auto-scroll mode: show the last N lines
-        if total_lines > inner_height {
-            total_lines - inner_height
-        } else {
-            0
-        }
+        total_lines.saturating_sub(inner_height)
     } else {
         // Manual scroll mode: calculate from scroll offset
         let max_scroll = total_lines.saturating_sub(inner_height);

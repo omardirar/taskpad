@@ -1,7 +1,7 @@
-/// UI rendering module.
-///
-/// This module contains all layout and drawing logic for the TUI.
-/// Rendering is a pure function of the AppState.
+//! UI rendering module.
+//!
+//! This module contains all layout and drawing logic for the TUI.
+//! Rendering is a pure function of the AppState.
 
 use crate::app::{AppState, HistoryEntry, TaskStatus};
 use ratatui::{
@@ -435,11 +435,7 @@ fn render_log_pane(frame: &mut Frame, app: &AppState, area: Rect) {
         // Calculate visible range based on scroll offset
         let start = if app.log_auto_scroll && app.log_scroll_offset == 0 {
             // Auto-scroll mode: show the last N lines
-            if total_lines > inner_height {
-                total_lines - inner_height
-            } else {
-                0
-            }
+            total_lines.saturating_sub(inner_height)
         } else {
             // Manual scroll mode: calculate from scroll offset
             // scroll_offset of 0 means showing the bottom

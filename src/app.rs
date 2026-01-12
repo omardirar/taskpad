@@ -1,4 +1,4 @@
-/// Core application data structures and state management for Taskpad.
+//! Core application data structures and state management for Taskpad.
 
 use std::collections::HashMap;
 use std::time::SystemTime;
@@ -293,7 +293,7 @@ impl AppState {
             // Append to the task-specific log history
             self.task_logs
                 .entry(running.task.id)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(line.clone());
             // Also append to the running task for compatibility
             running.append_log(line);
