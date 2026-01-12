@@ -324,9 +324,9 @@ impl AppState {
     pub fn update_task_status(&mut self, status: TaskStatus) {
         // First, extract the data we need for history (if applicable)
         let history_data = if !matches!(status, TaskStatus::Running) {
-            self.running_task.as_ref().map(|running| {
-                (running.task.name.clone(), running.task.runner.clone())
-            })
+            self.running_task
+                .as_ref()
+                .map(|running| (running.task.name.clone(), running.task.runner.clone()))
         } else {
             None
         };
@@ -478,7 +478,11 @@ impl AppState {
     pub fn selected_history_entry(&self) -> Option<&HistoryEntry> {
         let idx = self.selected_history_index?;
         // History is stored chronologically but displayed reversed
-        let actual_idx = self.task_history.len().saturating_sub(1).saturating_sub(idx);
+        let actual_idx = self
+            .task_history
+            .len()
+            .saturating_sub(1)
+            .saturating_sub(idx);
         self.task_history.get(actual_idx)
     }
 
@@ -570,7 +574,8 @@ impl AppState {
     pub fn start_selection(&mut self, pos: LogPosition) {
         if let Some(task) = self.selected_task() {
             let task_id = task.id;
-            self.task_selections.insert(task_id, LogSelection::new(pos, pos));
+            self.task_selections
+                .insert(task_id, LogSelection::new(pos, pos));
             self.is_selecting = true;
         }
     }
@@ -601,7 +606,11 @@ impl AppState {
     }
 
     /// Sets the drag scroll direction and last position
-    pub fn set_drag_scroll(&mut self, direction: Option<DragScrollDirection>, position: Option<LogPosition>) {
+    pub fn set_drag_scroll(
+        &mut self,
+        direction: Option<DragScrollDirection>,
+        position: Option<LogPosition>,
+    ) {
         self.drag_scroll_direction = direction;
         self.last_drag_position = position;
     }

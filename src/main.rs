@@ -10,7 +10,9 @@ mod ui;
 use app::{AppState, TaskStatus};
 use color_eyre::eyre::Result;
 use crossterm::{
-    event::{self, Event, KeyCode, KeyEvent, KeyEventKind, MouseButton, MouseEvent, MouseEventKind},
+    event::{
+        self, Event, KeyCode, KeyEvent, KeyEventKind, MouseButton, MouseEvent, MouseEventKind,
+    },
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
@@ -123,7 +125,8 @@ fn run_app(mut app: AppState) -> Result<()> {
         }
 
         // Poll for keyboard and mouse events with a short timeout
-        if event::poll(Duration::from_millis(16))? { // ~60 FPS for smoother streaming
+        if event::poll(Duration::from_millis(16))? {
+            // ~60 FPS for smoother streaming
             match event::read()? {
                 Event::Key(key) => {
                     if key.kind == KeyEventKind::Press {
@@ -132,7 +135,13 @@ fn run_app(mut app: AppState) -> Result<()> {
                 }
                 Event::Mouse(mouse) => {
                     let terminal_height = terminal.size()?.height;
-                    handle_mouse_event(&mut app, mouse, terminal_height, &mut log_rx, &mut status_rx);
+                    handle_mouse_event(
+                        &mut app,
+                        mouse,
+                        terminal_height,
+                        &mut log_rx,
+                        &mut status_rx,
+                    );
                 }
                 _ => {}
             }
@@ -327,7 +336,9 @@ fn handle_mouse_event(
             } else if mouse.column >= TASK_LIST_WIDTH && mouse.row >= 2 {
                 // Click in logs area - start text selection
                 // Convert screen coordinates to log line/column
-                if let Some(pos) = screen_to_log_position(app, mouse.column, mouse.row, terminal_height) {
+                if let Some(pos) =
+                    screen_to_log_position(app, mouse.column, mouse.row, terminal_height)
+                {
                     app.start_selection(pos);
                 }
             }
@@ -335,8 +346,11 @@ fn handle_mouse_event(
 
         // Handle mouse drag for text selection
         MouseEventKind::Drag(MouseButton::Left) => {
-            if app.is_selecting && mouse.column >= TASK_LIST_WIDTH && mouse.row >= 2
-                && let Some(pos) = screen_to_log_position(app, mouse.column, mouse.row, terminal_height)
+            if app.is_selecting
+                && mouse.column >= TASK_LIST_WIDTH
+                && mouse.row >= 2
+                && let Some(pos) =
+                    screen_to_log_position(app, mouse.column, mouse.row, terminal_height)
             {
                 app.update_selection(pos);
 
@@ -385,7 +399,12 @@ fn handle_mouse_event(
 }
 
 /// Converts screen coordinates to log line and column position
-fn screen_to_log_position(app: &AppState, screen_col: u16, screen_row: u16, terminal_height: u16) -> Option<app::LogPosition> {
+fn screen_to_log_position(
+    app: &AppState,
+    screen_col: u16,
+    screen_row: u16,
+    terminal_height: u16,
+) -> Option<app::LogPosition> {
     use app::LogPosition;
 
     // Task list width and borders
@@ -532,9 +551,12 @@ fn handle_key_event(
                 // Rerun task from history
                 if let Some(entry) = app.selected_history_entry() {
                     // Find matching task in current task list
-                    if let Some(task) = app.tasks.iter().find(|t|
-                        t.name == entry.task_name && t.runner == entry.runner
-                    ).cloned() {
+                    if let Some(task) = app
+                        .tasks
+                        .iter()
+                        .find(|t| t.name == entry.task_name && t.runner == entry.runner)
+                        .cloned()
+                    {
                         // Create new channels for this task
                         let (log_tx, new_log_rx) = channel();
                         let (status_tx, new_status_rx) = channel();
@@ -631,9 +653,7 @@ fn copy_to_clipboard(text: &str) -> Result<()> {
     #[cfg(target_os = "linux")]
     {
         use arboard::SetExtLinux;
-        clipboard.set()
-            .wait()
-            .text(text)?;
+        clipboard.set().wait().text(text)?;
     }
 
     // On other platforms, use the standard set_text

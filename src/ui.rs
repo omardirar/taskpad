@@ -8,7 +8,10 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap},
+    widgets::{
+        Block, Borders, List, ListItem, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState,
+        Wrap,
+    },
 };
 use std::time::SystemTime;
 
@@ -55,8 +58,8 @@ pub fn render(frame: &mut Frame, app: &AppState) {
         let left_chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Min(0),      // Task list
-                Constraint::Length(8),   // History box (fixed height)
+                Constraint::Min(0),    // Task list
+                Constraint::Length(8), // History box (fixed height)
             ])
             .split(content_chunks[0]);
 
@@ -73,8 +76,8 @@ pub fn render(frame: &mut Frame, app: &AppState) {
         let right_chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(6),   // Info box (fixed height)
-                Constraint::Min(0),      // Log pane
+                Constraint::Length(6), // Info box (fixed height)
+                Constraint::Min(0),    // Log pane
             ])
             .split(content_chunks[1]);
 
@@ -172,7 +175,8 @@ fn render_task_list(frame: &mut Frame, app: &AppState, area: Rect) {
         .enumerate()
         .map(|(idx, task)| {
             let actual_idx = start + idx;
-            let is_selected = actual_idx == app.selected_index && app.focused_pane == FocusedPane::Tasks;
+            let is_selected =
+                actual_idx == app.selected_index && app.focused_pane == FocusedPane::Tasks;
 
             // Check if this task is the currently running one
             let is_running = app
@@ -344,7 +348,9 @@ fn render_history_container(frame: &mut Frame, app: &AppState, area: Rect) {
     let reversed_history: Vec<&HistoryEntry> = app.task_history.iter().rev().collect();
 
     // Calculate visible range based on scroll offset
-    let start = app.history_scroll_offset.min(total_entries.saturating_sub(1));
+    let start = app
+        .history_scroll_offset
+        .min(total_entries.saturating_sub(1));
     let end = (start + inner_height).min(total_entries);
     let visible_entries = &reversed_history[start..end];
 
@@ -354,7 +360,8 @@ fn render_history_container(frame: &mut Frame, app: &AppState, area: Rect) {
         .map(|(visible_idx, entry)| {
             // Calculate actual index in reversed history
             let actual_idx = start + visible_idx;
-            let is_selected = app.selected_history_index == Some(actual_idx) && app.focused_pane == FocusedPane::History;
+            let is_selected = app.selected_history_index == Some(actual_idx)
+                && app.focused_pane == FocusedPane::History;
 
             // Format timestamp
             let timestamp_str = format_timestamp(&entry.timestamp);
@@ -373,13 +380,15 @@ fn render_history_container(frame: &mut Frame, app: &AppState, area: Rect) {
                 Span::raw(prefix),
                 Span::styled(
                     format!("{} ", timestamp_str),
-                    Style::default().fg(Color::DarkGray)
+                    Style::default().fg(Color::DarkGray),
                 ),
                 status_span,
                 Span::raw(" "),
                 Span::styled(
                     format!("{} ", entry.runner.prefix()),
-                    Style::default().add_modifier(Modifier::BOLD).fg(Color::Cyan)
+                    Style::default()
+                        .add_modifier(Modifier::BOLD)
+                        .fg(Color::Cyan),
                 ),
                 Span::raw(&entry.task_name),
             ];
@@ -439,7 +448,12 @@ fn render_log_pane(frame: &mut Frame, app: &AppState, area: Rect) {
     let title = if app.is_history_focused() {
         if let Some(entry) = app.selected_history_entry() {
             let timestamp_str = format_timestamp(&entry.timestamp);
-            format!("Logs (History) - {} {} - {}", entry.runner.prefix(), entry.task_name, timestamp_str)
+            format!(
+                "Logs (History) - {} {} - {}",
+                entry.runner.prefix(),
+                entry.task_name,
+                timestamp_str
+            )
         } else {
             "Logs (History)".to_string()
         }
@@ -528,7 +542,7 @@ fn render_log_pane(frame: &mut Frame, app: &AppState, area: Rect) {
                             if end_col > start_col {
                                 spans.push(Span::styled(
                                     line[start_col..end_col].to_string(),
-                                    base_style.bg(Color::DarkGray)
+                                    base_style.bg(Color::DarkGray),
                                 ));
                             }
                             if end_col < line_len {
@@ -542,7 +556,7 @@ fn render_log_pane(frame: &mut Frame, app: &AppState, area: Rect) {
                             }
                             spans.push(Span::styled(
                                 line[start_col..].to_string(),
-                                base_style.bg(Color::DarkGray)
+                                base_style.bg(Color::DarkGray),
                             ));
                         } else if actual_line_idx == sel_end.line {
                             // Last line of multi-line selection
@@ -550,7 +564,7 @@ fn render_log_pane(frame: &mut Frame, app: &AppState, area: Rect) {
                             if end_col > 0 {
                                 spans.push(Span::styled(
                                     line[..end_col].to_string(),
-                                    base_style.bg(Color::DarkGray)
+                                    base_style.bg(Color::DarkGray),
                                 ));
                             }
                             if end_col < line_len {
@@ -585,8 +599,7 @@ fn render_log_pane(frame: &mut Frame, app: &AppState, area: Rect) {
             let max_scroll = total_lines.saturating_sub(inner_height);
             let scroll_position = max_scroll.saturating_sub(app.log_scroll_offset.min(max_scroll));
 
-            let mut scrollbar_state = ScrollbarState::new(max_scroll)
-                .position(scroll_position);
+            let mut scrollbar_state = ScrollbarState::new(max_scroll).position(scroll_position);
 
             frame.render_stateful_widget(
                 scrollbar,
