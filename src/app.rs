@@ -458,19 +458,19 @@ impl AppState {
 
     /// Moves history selection up (to newer entries)
     pub fn move_history_selection_up(&mut self) {
-        if let Some(current) = self.selected_history_index {
-            if current > 0 {
-                self.selected_history_index = Some(current - 1);
-            }
+        if let Some(current) = self.selected_history_index
+            && current > 0
+        {
+            self.selected_history_index = Some(current - 1);
         }
     }
 
     /// Moves history selection down (to older entries)
     pub fn move_history_selection_down(&mut self) {
-        if let Some(current) = self.selected_history_index {
-            if current < self.task_history.len().saturating_sub(1) {
-                self.selected_history_index = Some(current + 1);
-            }
+        if let Some(current) = self.selected_history_index
+            && current < self.task_history.len().saturating_sub(1)
+        {
+            self.selected_history_index = Some(current + 1);
         }
     }
 
@@ -548,15 +548,6 @@ impl AppState {
         self.info_scroll_offset = self.info_scroll_offset.saturating_add(lines);
     }
 
-    /// Scrolls the history view up by the given number of lines (see earlier content)
-    pub fn scroll_history_up(&mut self, lines: usize) {
-        self.history_scroll_offset = self.history_scroll_offset.saturating_sub(lines);
-    }
-
-    /// Scrolls the history view down by the given number of lines (see later content)
-    pub fn scroll_history_down(&mut self, lines: usize) {
-        self.history_scroll_offset = self.history_scroll_offset.saturating_add(lines);
-    }
 
     /// Starts running a task and resets log scrolling for new output
     pub fn start_task_with_scroll_reset(&mut self, task: Task) {
