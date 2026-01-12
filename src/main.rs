@@ -95,6 +95,12 @@ fn run_app(mut app: AppState) -> Result<()> {
         let task_list_inner_height = task_list_outer_height.saturating_sub(2); // Subtract borders
         app.adjust_task_scroll(task_list_inner_height);
 
+        // Update scroll offset for history if visible
+        if app.show_history {
+            let history_inner_height = 8usize.saturating_sub(2); // History height (8) - borders (2)
+            app.adjust_history_scroll(history_inner_height);
+        }
+
         // Check for process events (log lines, status updates)
         if let Some(ref rx) = log_rx {
             while let Ok(line) = rx.try_recv() {
@@ -235,7 +241,8 @@ fn handle_scroll_up(app: &mut AppState, column: u16, row: u16, terminal_height: 
                 app.move_selection_up();
             }
             LeftRegion::History => {
-                app.scroll_history_up(3);
+                // Move history selection up (newer entry)
+                app.move_history_selection_up();
             }
         }
     }
@@ -263,7 +270,8 @@ fn handle_scroll_down(app: &mut AppState, column: u16, row: u16, terminal_height
                 app.move_selection_down();
             }
             LeftRegion::History => {
-                app.scroll_history_down(3);
+                // Move history selection down (older entry)
+                app.move_history_selection_down();
             }
         }
     }
@@ -283,17 +291,38 @@ fn handle_mouse_event(
     match mouse.kind {
         // Handle left click
         MouseEventKind::Down(MouseButton::Left) => {
-            // Check if click is within the task list area
-            // Task list: x in [0, TASK_LIST_WIDTH), y >= 2 (after top bar and border)
+            // Check if click is within the left pane (tasks or history)
             if mouse.column < TASK_LIST_WIDTH && mouse.row >= 2 {
-                // Calculate which task was clicked
-                // Subtract 2 for top bar (1) and task list border (1)
-                let clicked_row = (mouse.row - 2) as usize;
-                let task_index = clicked_row + app.task_scroll_offset;
+                match get_left_region(app, mouse.row, terminal_height) {
+                    LeftRegion::TaskList => {
+                        // Calculate which task was clicked
+                        // Subtract 2 for top bar (1) and task list border (1)
+                        let clicked_row = (mouse.row - 2) as usize;
+                        let task_index = clicked_row + app.task_scroll_offset;
 
-                // Update selection if valid
-                if task_index < app.tasks.len() {
-                    app.selected_index = task_index;
+                        // Update selection and focus if valid
+                        if task_index < app.tasks.len() {
+                            app.selected_index = task_index;
+                            app.focus_tasks();
+                        }
+                    }
+                    LeftRegion::History => {
+                        // Calculate which history entry was clicked
+                        // Find where history starts
+                        let content_height = terminal_height.saturating_sub(2);
+                        let history_height = 8;
+                        let history_start = 1 + content_height.saturating_sub(history_height);
+
+                        // Calculate clicked row within history (subtract border)
+                        let clicked_row = (mouse.row.saturating_sub(history_start + 1)) as usize;
+                        let history_index = clicked_row + app.history_scroll_offset;
+
+                        // Update selection and focus if valid
+                        if history_index < app.task_history.len() {
+                            app.selected_history_index = Some(history_index);
+                            app.focus_history();
+                        }
+                    }
                 }
             } else if mouse.column >= TASK_LIST_WIDTH && mouse.row >= 2 {
                 // Click in logs area - start text selection
@@ -379,8 +408,12 @@ fn screen_to_log_position(app: &AppState, screen_col: u16, screen_row: u16, term
     let col_in_log = (screen_col - log_inner_left) as usize;
     let row_in_visible_area = (screen_row - log_inner_top) as usize;
 
-    // Get the logs for the selected task
-    let log_lines = app.selected_task_logs()?;
+    // Get the logs based on focus: history logs if history focused, otherwise current task logs
+    let log_lines = if app.is_history_focused() {
+        app.get_history_logs()?
+    } else {
+        app.selected_task_logs()?
+    };
     if log_lines.is_empty() {
         return None;
     }
@@ -459,20 +492,69 @@ fn handle_key_event(
             app.clear_selection();
         }
 
-        // Move selection up
+        // Move selection up (context-aware based on focus)
         KeyCode::Up | KeyCode::Char('k') => {
-            app.move_selection_up();
+            if app.is_history_focused() {
+                app.move_history_selection_up();
+            } else {
+                app.move_selection_up();
+            }
         }
 
-        // Move selection down
+        // Move selection down (context-aware based on focus)
         KeyCode::Down | KeyCode::Char('j') => {
-            app.move_selection_down();
+            if app.is_history_focused() {
+                app.move_history_selection_down();
+            } else {
+                app.move_selection_down();
+            }
         }
 
-        // Run selected task
+        // Focus left (Tasks pane)
+        KeyCode::Left => {
+            app.focus_tasks();
+        }
+
+        // Focus right (History pane) - only if history is visible
+        KeyCode::Right => {
+            if app.show_history && !app.task_history.is_empty() {
+                app.focus_history();
+            } else if app.show_history {
+                app.set_message("History is empty".to_string());
+            }
+        }
+
+        // Run selected task or rerun from history
         KeyCode::Enter => {
             if app.is_task_running() {
                 app.set_message("A task is already running. Wait for it to finish.".to_string());
+            } else if app.is_history_focused() {
+                // Rerun task from history
+                if let Some(entry) = app.selected_history_entry() {
+                    // Find matching task in current task list
+                    if let Some(task) = app.tasks.iter().find(|t|
+                        t.name == entry.task_name && t.runner == entry.runner
+                    ).cloned() {
+                        // Create new channels for this task
+                        let (log_tx, new_log_rx) = channel();
+                        let (status_tx, new_status_rx) = channel();
+
+                        *log_rx = Some(new_log_rx);
+                        *status_rx = Some(new_status_rx);
+
+                        // Start the task and reset log scrolling
+                        app.start_task_with_scroll_reset(task.clone());
+                        process::run_task(task, log_tx, status_tx);
+
+                        // Switch focus back to tasks
+                        app.focus_tasks();
+                    } else {
+                        app.set_message(format!(
+                            "Task '{}' not found in current task list",
+                            entry.task_name
+                        ));
+                    }
+                }
             } else if let Some(task) = app.selected_task().cloned() {
                 // Create new channels for this task
                 let (log_tx, new_log_rx) = channel();

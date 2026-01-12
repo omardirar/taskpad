@@ -39,6 +39,15 @@ impl LogSelection {
     }
 }
 
+/// Represents which pane currently has focus
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FocusedPane {
+    /// Tasks pane is focused (default)
+    Tasks,
+    /// History pane is focused
+    History,
+}
+
 /// Task runner type.
 #[derive(Debug, Clone, PartialEq)]
 pub enum TaskRunner {
@@ -202,6 +211,12 @@ pub struct AppState {
     pub show_history: bool,
     /// History of executed tasks
     pub task_history: Vec<HistoryEntry>,
+    /// Which pane currently has focus (Tasks or History)
+    pub focused_pane: FocusedPane,
+    /// Selected index in history pane (None if no selection)
+    pub selected_history_index: Option<usize>,
+    /// Logs stored per history entry (keyed by history entry index in reversed order)
+    pub history_logs: HashMap<usize, Vec<String>>,
 }
 
 impl AppState {
@@ -226,6 +241,9 @@ impl AppState {
             last_drag_position: None,
             show_history: false,
             task_history: Vec::new(),
+            focused_pane: FocusedPane::Tasks,
+            selected_history_index: None,
+            history_logs: HashMap::new(),
         }
     }
 
@@ -250,6 +268,9 @@ impl AppState {
             last_drag_position: None,
             show_history: false,
             task_history: Vec::new(),
+            focused_pane: FocusedPane::Tasks,
+            selected_history_index: None,
+            history_logs: HashMap::new(),
         }
     }
 
@@ -319,6 +340,12 @@ impl AppState {
         // Add to history when task completes (success or failure)
         if let Some((task_name, runner)) = history_data {
             self.add_to_history(task_name, runner, status);
+
+            // Store logs for this history entry
+            if let Some(running) = &self.running_task {
+                let logs = running.log_lines.clone();
+                self.store_history_logs(logs);
+            }
         }
     }
 
@@ -370,6 +397,17 @@ impl AppState {
         }
     }
 
+    /// Adjusts history scroll offset to ensure the selected history entry is visible
+    pub fn adjust_history_scroll(&mut self, visible_height: usize) {
+        if let Some(selected) = self.selected_history_index {
+            if selected < self.history_scroll_offset {
+                self.history_scroll_offset = selected;
+            } else if selected >= self.history_scroll_offset + visible_height {
+                self.history_scroll_offset = selected - visible_height + 1;
+            }
+        }
+    }
+
     /// Sets a temporary message
     pub fn set_message(&mut self, message: String) {
         self.message = Some(message);
@@ -388,6 +426,66 @@ impl AppState {
     /// Toggles the history container display
     pub fn toggle_history(&mut self) {
         self.show_history = !self.show_history;
+        // Reset focus to Tasks when hiding history
+        if !self.show_history {
+            self.focused_pane = FocusedPane::Tasks;
+            self.selected_history_index = None;
+        }
+    }
+
+    /// Switches focus to Tasks pane
+    pub fn focus_tasks(&mut self) {
+        self.focused_pane = FocusedPane::Tasks;
+        self.clear_selection();
+    }
+
+    /// Switches focus to History pane (if history is visible and not empty)
+    pub fn focus_history(&mut self) {
+        if self.show_history && !self.task_history.is_empty() {
+            self.focused_pane = FocusedPane::History;
+            self.clear_selection();
+            // Initialize selection to most recent entry if not set
+            if self.selected_history_index.is_none() {
+                self.selected_history_index = Some(0);
+            }
+        }
+    }
+
+    /// Returns true if History pane currently has focus
+    pub fn is_history_focused(&self) -> bool {
+        self.focused_pane == FocusedPane::History
+    }
+
+    /// Moves history selection up (to newer entries)
+    pub fn move_history_selection_up(&mut self) {
+        if let Some(current) = self.selected_history_index {
+            if current > 0 {
+                self.selected_history_index = Some(current - 1);
+            }
+        }
+    }
+
+    /// Moves history selection down (to older entries)
+    pub fn move_history_selection_down(&mut self) {
+        if let Some(current) = self.selected_history_index {
+            if current < self.task_history.len().saturating_sub(1) {
+                self.selected_history_index = Some(current + 1);
+            }
+        }
+    }
+
+    /// Returns the currently selected history entry (if any)
+    pub fn selected_history_entry(&self) -> Option<&HistoryEntry> {
+        let idx = self.selected_history_index?;
+        // History is stored chronologically but displayed reversed
+        let actual_idx = self.task_history.len().saturating_sub(1).saturating_sub(idx);
+        self.task_history.get(actual_idx)
+    }
+
+    /// Gets the logs for the currently selected history entry
+    pub fn get_history_logs(&self) -> Option<&Vec<String>> {
+        let idx = self.selected_history_index?;
+        self.history_logs.get(&idx)
     }
 
     /// Adds a task execution to history
@@ -399,6 +497,21 @@ impl AppState {
             status,
         };
         self.task_history.push(entry);
+    }
+
+    /// Stores logs for the most recent history entry
+    /// Shifts all existing history log indices up by 1
+    fn store_history_logs(&mut self, logs: Vec<String>) {
+        // Shift all existing history log entries up by 1
+        let mut new_history_logs = HashMap::new();
+        for (idx, old_logs) in &self.history_logs {
+            new_history_logs.insert(idx + 1, old_logs.clone());
+        }
+
+        // Store new logs at index 0 (most recent)
+        new_history_logs.insert(0, logs);
+
+        self.history_logs = new_history_logs;
     }
 
     /// Scrolls the log view up by the given number of lines
@@ -512,11 +625,16 @@ impl AppState {
         }
     }
 
-    /// Gets the selected text from logs for the current task
+    /// Gets the selected text from logs for the current task or history entry
     pub fn get_selected_text(&self) -> Option<String> {
         let task = self.selected_task()?;
         let selection = self.task_selections.get(&task.id)?;
-        let log_lines = self.selected_task_logs()?;
+        // Get logs based on focus: history logs if history focused, otherwise current task logs
+        let log_lines = if self.is_history_focused() {
+            self.get_history_logs()?
+        } else {
+            self.selected_task_logs()?
+        };
 
         let (start, end) = selection.normalized();
 

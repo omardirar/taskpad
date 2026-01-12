@@ -2,7 +2,7 @@
 ///
 /// This module contains all layout and drawing logic for the TUI.
 /// Rendering is a pure function of the AppState.
-use crate::app::{AppState, HistoryEntry, TaskStatus};
+use crate::app::{AppState, FocusedPane, HistoryEntry, TaskStatus};
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -135,10 +135,16 @@ fn render_status_bar(frame: &mut Frame, app: &AppState, area: Rect) {
 
 /// Renders the task list pane on the left side.
 fn render_task_list(frame: &mut Frame, app: &AppState, area: Rect) {
+    let border_color = if app.focused_pane == FocusedPane::Tasks {
+        Color::Cyan
+    } else {
+        Color::White
+    };
+
     let block = Block::default()
         .title("Tasks")
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::White));
+        .border_style(Style::default().fg(border_color));
 
     if app.tasks.is_empty() {
         let message = if app.message.is_some() {
@@ -166,7 +172,7 @@ fn render_task_list(frame: &mut Frame, app: &AppState, area: Rect) {
         .enumerate()
         .map(|(idx, task)| {
             let actual_idx = start + idx;
-            let is_selected = actual_idx == app.selected_index;
+            let is_selected = actual_idx == app.selected_index && app.focused_pane == FocusedPane::Tasks;
 
             // Check if this task is the currently running one
             let is_running = app
@@ -312,10 +318,16 @@ fn render_info_box(frame: &mut Frame, app: &AppState, area: Rect) {
 
 /// Renders the history container showing recently executed tasks with timestamps.
 fn render_history_container(frame: &mut Frame, app: &AppState, area: Rect) {
+    let border_color = if app.focused_pane == FocusedPane::History {
+        Color::Cyan
+    } else {
+        Color::White
+    };
+
     let block = Block::default()
         .title("History")
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::White));
+        .border_style(Style::default().fg(border_color));
 
     if app.task_history.is_empty() {
         let message = Paragraph::new("No tasks executed yet.")
@@ -338,7 +350,12 @@ fn render_history_container(frame: &mut Frame, app: &AppState, area: Rect) {
 
     let items: Vec<ListItem> = visible_entries
         .iter()
-        .map(|entry| {
+        .enumerate()
+        .map(|(visible_idx, entry)| {
+            // Calculate actual index in reversed history
+            let actual_idx = start + visible_idx;
+            let is_selected = app.selected_history_index == Some(actual_idx) && app.focused_pane == FocusedPane::History;
+
             // Format timestamp
             let timestamp_str = format_timestamp(&entry.timestamp);
 
@@ -350,7 +367,10 @@ fn render_history_container(frame: &mut Frame, app: &AppState, area: Rect) {
             };
 
             // Create the line with timestamp, status, runner, and task name
+            let prefix = if is_selected { "> " } else { "  " };
+
             let spans = vec![
+                Span::raw(prefix),
                 Span::styled(
                     format!("{} ", timestamp_str),
                     Style::default().fg(Color::DarkGray)
@@ -364,7 +384,16 @@ fn render_history_container(frame: &mut Frame, app: &AppState, area: Rect) {
                 Span::raw(&entry.task_name),
             ];
 
-            ListItem::new(Line::from(spans))
+            let line = Line::from(spans);
+
+            // Apply selection highlighting (inverted colors like task list)
+            let style = if is_selected {
+                Style::default().bg(Color::White).fg(Color::Black)
+            } else {
+                Style::default()
+            };
+
+            ListItem::new(line).style(style)
         })
         .collect();
 
@@ -407,7 +436,14 @@ fn format_timestamp(time: &SystemTime) -> String {
 
 /// Renders the log pane on the right side showing task output.
 fn render_log_pane(frame: &mut Frame, app: &AppState, area: Rect) {
-    let title = if let Some(task) = app.selected_task() {
+    let title = if app.is_history_focused() {
+        if let Some(entry) = app.selected_history_entry() {
+            let timestamp_str = format_timestamp(&entry.timestamp);
+            format!("Logs (History) - {} {} - {}", entry.runner.prefix(), entry.task_name, timestamp_str)
+        } else {
+            "Logs (History)".to_string()
+        }
+    } else if let Some(task) = app.selected_task() {
         format!("Logs - {} {}", task.runner.prefix(), task.name)
     } else {
         "Logs".to_string()
@@ -418,8 +454,14 @@ fn render_log_pane(frame: &mut Frame, app: &AppState, area: Rect) {
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::White));
 
-    // Get logs for the selected task
-    if let Some(log_lines) = app.selected_task_logs() {
+    // Get logs based on focus: history logs if history focused, otherwise current task logs
+    let log_lines = if app.is_history_focused() {
+        app.get_history_logs()
+    } else {
+        app.selected_task_logs()
+    };
+
+    if let Some(log_lines) = log_lines {
         if log_lines.is_empty() {
             let message = Paragraph::new("No output yet...")
                 .block(block)
@@ -569,6 +611,8 @@ fn render_key_hints(frame: &mut Frame, area: Rect) {
     let hints = vec![
         Span::raw("↑/↓,k/j:"),
         Span::styled(" select ", Style::default().fg(Color::Cyan)),
+        Span::raw("│ ←/→:"),
+        Span::styled(" focus ", Style::default().fg(Color::Cyan)),
         Span::raw("│ Enter:"),
         Span::styled(" run ", Style::default().fg(Color::Cyan)),
         Span::raw("│ y/Ctrl+C:"),
