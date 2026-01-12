@@ -548,7 +548,6 @@ impl AppState {
         self.info_scroll_offset = self.info_scroll_offset.saturating_add(lines);
     }
 
-
     /// Starts running a task and resets log scrolling for new output
     pub fn start_task_with_scroll_reset(&mut self, task: Task) {
         self.start_task(task);
