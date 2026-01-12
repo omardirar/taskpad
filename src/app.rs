@@ -1,24 +1,49 @@
 /// Core application data structures and state management for Taskpad.
+/// Task runner type.
+#[derive(Debug, Clone, PartialEq)]
+pub enum TaskRunner {
+    /// Just command runner
+    Just,
+    /// Make build tool
+    Make,
+}
+
+impl TaskRunner {
+    /// Returns the display prefix for this runner
+    pub fn prefix(&self) -> &str {
+        match self {
+            TaskRunner::Just => "[just]",
+            TaskRunner::Make => "[make]",
+        }
+    }
+
+    /// Returns the command name for this runner
+    pub fn command(&self) -> &str {
+        match self {
+            TaskRunner::Just => "just",
+            TaskRunner::Make => "make",
+        }
+    }
+}
 
 /// Represents a task that can be executed.
 ///
-/// For v0, all tasks are Just recipes, but the structure is designed
-/// to support other task types in the future.
+/// Supports both Just recipes and Make targets.
 #[derive(Debug, Clone)]
 pub struct Task {
     /// Stable identifier for the task
     pub id: usize,
-    /// User-facing name (recipe name)
+    /// User-facing name (recipe/target name)
     pub name: String,
-    /// Optional description from just --list output
+    /// Optional description from task runner output
     pub description: Option<String>,
+    /// The task runner that executes this task
+    pub runner: TaskRunner,
 }
 
 /// Status of a task execution.
 #[derive(Debug, Clone, PartialEq)]
 pub enum TaskStatus {
-    /// Task has not been run yet
-    Idle,
     /// Task is currently running
     Running,
     /// Task completed successfully with the given exit code
@@ -31,7 +56,6 @@ impl TaskStatus {
     /// Returns a user-friendly string representation of the status
     pub fn display_string(&self) -> String {
         match self {
-            TaskStatus::Idle => "Idle".to_string(),
             TaskStatus::Running => "Running".to_string(),
             TaskStatus::Success(code) => format!("Success (exit={})", code),
             TaskStatus::Failed(code) => format!("Failed (exit={})", code),
@@ -94,8 +118,6 @@ pub struct AppState {
     pub quitting: bool,
     /// Vertical scroll offset for the task list pane
     pub task_scroll_offset: usize,
-    /// Vertical scroll offset for the log pane
-    pub log_scroll_offset: usize,
 }
 
 impl AppState {
@@ -108,7 +130,6 @@ impl AppState {
             message: None,
             quitting: false,
             task_scroll_offset: 0,
-            log_scroll_offset: 0,
         }
     }
 
@@ -121,7 +142,6 @@ impl AppState {
             message: Some(message),
             quitting: false,
             task_scroll_offset: 0,
-            log_scroll_offset: 0,
         }
     }
 
@@ -229,9 +249,9 @@ mod tests {
     #[test]
     fn test_move_selection_up() {
         let tasks = vec![
-            Task { id: 0, name: "task1".to_string(), description: None },
-            Task { id: 1, name: "task2".to_string(), description: None },
-            Task { id: 2, name: "task3".to_string(), description: None },
+            Task { id: 0, name: "task1".to_string(), description: None, runner: TaskRunner::Just },
+            Task { id: 1, name: "task2".to_string(), description: None, runner: TaskRunner::Just },
+            Task { id: 2, name: "task3".to_string(), description: None, runner: TaskRunner::Just },
         ];
         let mut app = AppState::new(tasks);
         app.selected_index = 1;
@@ -247,9 +267,9 @@ mod tests {
     #[test]
     fn test_move_selection_down() {
         let tasks = vec![
-            Task { id: 0, name: "task1".to_string(), description: None },
-            Task { id: 1, name: "task2".to_string(), description: None },
-            Task { id: 2, name: "task3".to_string(), description: None },
+            Task { id: 0, name: "task1".to_string(), description: None, runner: TaskRunner::Just },
+            Task { id: 1, name: "task2".to_string(), description: None, runner: TaskRunner::Just },
+            Task { id: 2, name: "task3".to_string(), description: None, runner: TaskRunner::Just },
         ];
         let mut app = AppState::new(tasks);
 
@@ -269,7 +289,7 @@ mod tests {
         let mut app = AppState::new(vec![]);
         assert!(!app.is_task_running());
 
-        let task = Task { id: 0, name: "test".to_string(), description: None };
+        let task = Task { id: 0, name: "test".to_string(), description: None, runner: TaskRunner::Just };
         app.start_task(task);
         assert!(app.is_task_running());
 

@@ -2,7 +2,6 @@
 ///
 /// This module handles running tasks as subprocesses and streaming
 /// their output back to the main thread via channels.
-
 use crate::app::{Task, TaskStatus};
 use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
@@ -12,7 +11,7 @@ use std::thread;
 /// Spawns a task as a subprocess and streams its output.
 ///
 /// This function:
-/// 1. Spawns `just <recipe-name>` as a child process
+/// 1. Spawns the appropriate command (`just <recipe-name>` or `make <target>`) based on task.runner
 /// 2. Captures both stdout and stderr
 /// 3. Streams output line-by-line to `log_tx`
 /// 4. Sends final status to `status_tx` when the process exits
@@ -37,10 +36,11 @@ pub fn run_task(
 ) {
     thread::spawn(move || {
         // Send initial log message
-        let _ = log_tx.send(format!("Starting task: {}", task.name));
+        let _ = log_tx.send(format!("Starting task: {} {}", task.runner.prefix(), task.name));
 
-        // Spawn the just command
-        let mut child = match Command::new("just")
+        // Spawn the appropriate command based on the task runner
+        let command = task.runner.command();
+        let mut child = match Command::new(command)
             .arg(&task.name)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
