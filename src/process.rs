@@ -1,8 +1,7 @@
-//! Process execution module.
-//!
-//! This module handles running tasks as subprocesses and streaming
-//! their output back to the main thread via channels.
-
+/// Process execution module.
+///
+/// This module handles running tasks as subprocesses and streaming
+/// their output back to the main thread via channels.
 use crate::app::{Task, TaskStatus};
 use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
@@ -30,14 +29,14 @@ use std::thread;
 ///
 /// This function may panic if the channels are disconnected, which would indicate
 /// a programming error (the main thread dropped its receivers).
-pub fn run_task(
-    task: Task,
-    log_tx: Sender<String>,
-    status_tx: Sender<TaskStatus>,
-) {
+pub fn run_task(task: Task, log_tx: Sender<String>, status_tx: Sender<TaskStatus>) {
     thread::spawn(move || {
         // Send initial log message
-        let _ = log_tx.send(format!("Starting task: {} {}", task.runner.prefix(), task.name));
+        let _ = log_tx.send(format!(
+            "Starting task: {} {}",
+            task.runner.prefix(),
+            task.name
+        ));
 
         // Spawn the appropriate command based on the task runner
         let command = task.runner.command();

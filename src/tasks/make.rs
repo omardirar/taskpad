@@ -1,10 +1,9 @@
-//! Make target discovery module.
-//!
-//! This module provides functionality to discover available Make targets
-//! in the current directory by running `make -qp` and parsing its output.
-
+/// Make target discovery module.
+///
+/// This module provides functionality to discover available Make targets
+/// in the current directory by running `make -qp` and parsing its output.
 use crate::app::{Task, TaskRunner};
-use color_eyre::eyre::{eyre, Result};
+use color_eyre::eyre::{Result, eyre};
 use std::process::Command;
 
 /// Discovers available Make targets in the current directory.
@@ -32,12 +31,12 @@ pub fn discover_tasks() -> Result<Vec<Task>> {
         Err(_) => {
             return Err(eyre!(
                 "make not found on PATH. Please install make and try again."
-            ))
+            ));
         }
         Ok(output) if !output.status.success() => {
             return Err(eyre!(
                 "make command failed. Please check your make installation."
-            ))
+            ));
         }
         _ => {}
     }
@@ -55,9 +54,7 @@ pub fn discover_tasks() -> Result<Vec<Task>> {
     // Check stderr for common error messages
     let stderr = String::from_utf8_lossy(&output.stderr);
     if stderr.contains("No such file or directory") && stderr.contains("Makefile") {
-        return Err(eyre!(
-            "No Makefile found in this directory."
-        ));
+        return Err(eyre!("No Makefile found in this directory."));
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -149,10 +146,7 @@ fn parse_make_database(output: &str) -> Result<Vec<Task>> {
         }
 
         // Skip common make automatic variables and internal targets
-        if matches!(
-            target,
-            "Makefile" | "makefile" | "GNUmakefile"
-        ) {
+        if matches!(target, "Makefile" | "makefile" | "GNUmakefile") {
             continue;
         }
 
@@ -164,10 +158,20 @@ fn parse_make_database(output: &str) -> Result<Vec<Task>> {
         // Skip common internal Make targets
         if matches!(
             target,
-            "SUFFIXES" | "DEFAULT" | "PRECIOUS" | "INTERMEDIATE" |
-            "SECONDARY" | "SECONDEXPANSION" | "DELETE_ON_ERROR" |
-            "IGNORE" | "LOW_RESOLUTION_TIME" | "SILENT" | "EXPORT_ALL_VARIABLES" |
-            "NOTPARALLEL" | "ONESHELL" | "POSIX"
+            "SUFFIXES"
+                | "DEFAULT"
+                | "PRECIOUS"
+                | "INTERMEDIATE"
+                | "SECONDARY"
+                | "SECONDEXPANSION"
+                | "DELETE_ON_ERROR"
+                | "IGNORE"
+                | "LOW_RESOLUTION_TIME"
+                | "SILENT"
+                | "EXPORT_ALL_VARIABLES"
+                | "NOTPARALLEL"
+                | "ONESHELL"
+                | "POSIX"
         ) {
             continue;
         }

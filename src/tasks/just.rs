@@ -1,10 +1,9 @@
-//! Just recipe discovery module.
-//!
-//! This module provides functionality to discover available Just recipes
-//! in the current directory by running `just --list` and parsing its output.
-
+/// Just recipe discovery module.
+///
+/// This module provides functionality to discover available Just recipes
+/// in the current directory by running `just --list` and parsing its output.
 use crate::app::{Task, TaskRunner};
-use color_eyre::eyre::{eyre, Result};
+use color_eyre::eyre::{Result, eyre};
 use std::process::Command;
 
 /// Discovers available Just recipes in the current directory.
@@ -32,12 +31,12 @@ pub fn discover_tasks() -> Result<Vec<Task>> {
         Err(_) => {
             return Err(eyre!(
                 "just not found on PATH. Please install just and try again."
-            ))
+            ));
         }
         Ok(output) if !output.status.success() => {
             return Err(eyre!(
                 "just command failed. Please check your just installation."
-            ))
+            ));
         }
         _ => {}
     }
@@ -51,10 +50,7 @@ pub fn discover_tasks() -> Result<Vec<Task>> {
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(eyre!(
-            "just --list failed: {}",
-            stderr.trim()
-        ));
+        return Err(eyre!("just --list failed: {}", stderr.trim()));
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -166,7 +162,10 @@ mod tests {
         assert_eq!(tasks[1].description, None);
 
         assert_eq!(tasks[2].name, "deploy");
-        assert_eq!(tasks[2].description, Some("Deploy to production".to_string()));
+        assert_eq!(
+            tasks[2].description,
+            Some("Deploy to production".to_string())
+        );
     }
 
     #[test]

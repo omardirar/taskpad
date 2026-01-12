@@ -1,8 +1,7 @@
-//! Taskpad - A keyboard-driven TUI task launcher with first-class support for just recipes.
-//!
-//! This is the main entry point that sets up the terminal, discovers tasks,
-//! and runs the main event loop.
-
+/// Taskpad - A keyboard-driven TUI task launcher with first-class support for just recipes.
+///
+/// This is the main entry point that sets up the terminal, discovers tasks,
+/// and runs the main event loop.
 mod app;
 mod process;
 mod tasks;
@@ -13,14 +12,11 @@ use color_eyre::eyre::Result;
 use crossterm::{
     event::{self, Event, KeyCode, KeyEvent, KeyEventKind, MouseButton, MouseEvent, MouseEventKind},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
-use ratatui::{
-    backend::CrosstermBackend,
-    Terminal,
-};
+use ratatui::{Terminal, backend::CrosstermBackend};
 use std::io;
-use std::sync::mpsc::{channel, Receiver};
+use std::sync::mpsc::{Receiver, channel};
 use std::time::Duration;
 
 /// Main entry point for Taskpad.
@@ -59,7 +55,8 @@ fn run_app_with_error(app: AppState) -> Result<()> {
     loop {
         if event::poll(Duration::from_millis(100))?
             && let Event::Key(key) = event::read()?
-            && key.kind == KeyEventKind::Press && key.code == KeyCode::Char('q')
+            && key.kind == KeyEventKind::Press
+            && key.code == KeyCode::Char('q')
         {
             break;
         }
