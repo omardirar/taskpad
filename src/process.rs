@@ -110,8 +110,8 @@ pub fn run_task(
         // Wait for the child process to exit
         match child.wait() {
             Ok(status) => {
-                // Give a moment for remaining output to be processed
-                thread::sleep(std::time::Duration::from_millis(100));
+                // Give a brief moment for remaining output to be processed
+                thread::sleep(std::time::Duration::from_millis(50));
 
                 let exit_code = status.code().unwrap_or(-1);
                 let _ = log_tx.send(format!("Task exited with code: {}", exit_code));
