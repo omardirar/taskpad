@@ -49,57 +49,41 @@ pub fn render(frame: &mut Frame, app: &AppState) {
         ])
         .split(chunks[1]);
 
-    // Render task list and optional history/info boxes
-    match (app.show_history, app.show_info) {
-        (true, true) => {
-            // Both history and info boxes visible
-            let left_chunks = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([
-                    Constraint::Min(0),      // Task list
-                    Constraint::Length(8),   // History box (fixed height)
-                    Constraint::Length(6),   // Info box (fixed height)
-                ])
-                .split(content_chunks[0]);
+    // Render task list and optional history box on the left
+    if app.show_history {
+        // History box visible
+        let left_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Min(0),      // Task list
+                Constraint::Length(8),   // History box (fixed height)
+            ])
+            .split(content_chunks[0]);
 
-            render_task_list(frame, app, left_chunks[0]);
-            render_history_container(frame, app, left_chunks[1]);
-            render_info_box(frame, app, left_chunks[2]);
-        }
-        (true, false) => {
-            // Only history box visible
-            let left_chunks = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([
-                    Constraint::Min(0),      // Task list
-                    Constraint::Length(8),   // History box (fixed height)
-                ])
-                .split(content_chunks[0]);
-
-            render_task_list(frame, app, left_chunks[0]);
-            render_history_container(frame, app, left_chunks[1]);
-        }
-        (false, true) => {
-            // Only info box visible
-            let left_chunks = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([
-                    Constraint::Min(0),     // Task list
-                    Constraint::Length(6),  // Info box (fixed height)
-                ])
-                .split(content_chunks[0]);
-
-            render_task_list(frame, app, left_chunks[0]);
-            render_info_box(frame, app, left_chunks[1]);
-        }
-        (false, false) => {
-            // Neither visible, just task list
-            render_task_list(frame, app, content_chunks[0]);
-        }
+        render_task_list(frame, app, left_chunks[0]);
+        render_history_container(frame, app, left_chunks[1]);
+    } else {
+        // Just task list
+        render_task_list(frame, app, content_chunks[0]);
     }
 
-    // Render log pane
-    render_log_pane(frame, app, content_chunks[1]);
+    // Render info box and log pane on the right
+    if app.show_info {
+        // Info box visible on top of log pane
+        let right_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(6),   // Info box (fixed height)
+                Constraint::Min(0),      // Log pane
+            ])
+            .split(content_chunks[1]);
+
+        render_info_box(frame, app, right_chunks[0]);
+        render_log_pane(frame, app, right_chunks[1]);
+    } else {
+        // Just log pane
+        render_log_pane(frame, app, content_chunks[1]);
+    }
 
     // Render bottom key hints bar
     render_key_hints(frame, chunks[2]);

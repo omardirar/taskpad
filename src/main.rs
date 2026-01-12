@@ -87,11 +87,10 @@ fn run_app(mut app: AppState) -> Result<()> {
         // Calculate the actual visible height for the task list based on layout
         let terminal_height = terminal.size()?.height;
         let content_height = terminal_height.saturating_sub(2) as usize; // Subtract top and bottom bars
-        let task_list_outer_height = match (app.show_history, app.show_info) {
-            (true, true) => content_height.saturating_sub(8 + 6), // history (8) + info (6)
-            (true, false) => content_height.saturating_sub(8),    // history (8)
-            (false, true) => content_height.saturating_sub(6),    // info (6)
-            (false, false) => content_height,
+        let task_list_outer_height = if app.show_history {
+            content_height.saturating_sub(8) // history (8)
+        } else {
+            content_height
         };
         let task_list_inner_height = task_list_outer_height.saturating_sub(2); // Subtract borders
         app.adjust_task_scroll(task_list_inner_height);
@@ -150,7 +149,13 @@ fn run_app(mut app: AppState) -> Result<()> {
 enum LeftRegion {
     TaskList,
     History,
+}
+
+/// Determines which region the mouse is over on the right side
+#[derive(Debug, PartialEq)]
+enum RightRegion {
     Info,
+    Logs,
 }
 
 /// Calculates which left-side region the mouse is over based on layout
@@ -166,50 +171,45 @@ fn get_left_region(app: &AppState, row: u16, terminal_height: u16) -> LeftRegion
     // Calculate the content area height (subtract top bar + bottom bar)
     let content_height = terminal_height.saturating_sub(2);
 
-    match (app.show_history, app.show_info) {
-        (true, true) => {
-            // Tasks at top, history (8 lines), info (6 lines) at bottom
-            let history_height = 8;
-            let info_height = 6;
-            let task_list_height = content_height.saturating_sub(history_height + info_height);
+    if app.show_history {
+        // Tasks at top, history (8 lines) at bottom
+        let history_height = 8;
+        let history_start = 1 + content_height.saturating_sub(history_height);
 
-            let history_start = 1 + task_list_height;
-            let info_start = history_start + history_height;
-
-            if row < history_start {
-                LeftRegion::TaskList
-            } else if row < info_start {
-                LeftRegion::History
-            } else {
-                LeftRegion::Info
-            }
-        }
-        (true, false) => {
-            // Tasks at top, history (8 lines) at bottom
-            let history_height = 8;
-            let history_start = 1 + content_height.saturating_sub(history_height);
-
-            if row < history_start {
-                LeftRegion::TaskList
-            } else {
-                LeftRegion::History
-            }
-        }
-        (false, true) => {
-            // Tasks at top, info (6 lines) at bottom
-            let info_height = 6;
-            let info_start = 1 + content_height.saturating_sub(info_height);
-
-            if row < info_start {
-                LeftRegion::TaskList
-            } else {
-                LeftRegion::Info
-            }
-        }
-        (false, false) => {
-            // Only tasks
+        if row < history_start {
             LeftRegion::TaskList
+        } else {
+            LeftRegion::History
         }
+    } else {
+        // Only tasks
+        LeftRegion::TaskList
+    }
+}
+
+/// Calculates which right-side region the mouse is over based on layout
+fn get_right_region(app: &AppState, row: u16, _terminal_height: u16) -> RightRegion {
+    // Row 0: top bar
+    // Row 1: border top
+    // Remaining rows split based on what's visible
+
+    if row <= 1 {
+        return RightRegion::Logs;
+    }
+
+    if app.show_info {
+        // Info (6 lines) at top, logs below
+        let info_height = 6;
+        let logs_start = 1 + info_height;
+
+        if row < logs_start {
+            RightRegion::Info
+        } else {
+            RightRegion::Logs
+        }
+    } else {
+        // Only logs
+        RightRegion::Logs
     }
 }
 
@@ -218,8 +218,15 @@ fn handle_scroll_up(app: &mut AppState, column: u16, row: u16, terminal_height: 
     const TASK_LIST_WIDTH: u16 = 35;
 
     if column >= TASK_LIST_WIDTH {
-        // Right side: scroll logs
-        app.scroll_logs_up(3);
+        // Right side: determine which region and scroll accordingly
+        match get_right_region(app, row, terminal_height) {
+            RightRegion::Info => {
+                app.scroll_info_up(3);
+            }
+            RightRegion::Logs => {
+                app.scroll_logs_up(3);
+            }
+        }
     } else {
         // Left side: determine which region and scroll accordingly
         match get_left_region(app, row, terminal_height) {
@@ -230,9 +237,6 @@ fn handle_scroll_up(app: &mut AppState, column: u16, row: u16, terminal_height: 
             LeftRegion::History => {
                 app.scroll_history_up(3);
             }
-            LeftRegion::Info => {
-                app.scroll_info_up(3);
-            }
         }
     }
 }
@@ -242,8 +246,15 @@ fn handle_scroll_down(app: &mut AppState, column: u16, row: u16, terminal_height
     const TASK_LIST_WIDTH: u16 = 35;
 
     if column >= TASK_LIST_WIDTH {
-        // Right side: scroll logs
-        app.scroll_logs_down(3);
+        // Right side: determine which region and scroll accordingly
+        match get_right_region(app, row, terminal_height) {
+            RightRegion::Info => {
+                app.scroll_info_down(3);
+            }
+            RightRegion::Logs => {
+                app.scroll_logs_down(3);
+            }
+        }
     } else {
         // Left side: determine which region and scroll accordingly
         match get_left_region(app, row, terminal_height) {
@@ -253,9 +264,6 @@ fn handle_scroll_down(app: &mut AppState, column: u16, row: u16, terminal_height
             }
             LeftRegion::History => {
                 app.scroll_history_down(3);
-            }
-            LeftRegion::Info => {
-                app.scroll_info_down(3);
             }
         }
     }
@@ -304,10 +312,14 @@ fn handle_mouse_event(
                 app.update_selection(pos);
 
                 // Check if we should auto-scroll
-                // Top edge threshold: within 3 rows of top of logs (row 2 + 3 = 5)
+                // Top edge threshold: within 3 rows of top of logs
                 // Bottom edge threshold: within 3 rows of bottom of terminal (terminal_height - 3)
                 const SCROLL_THRESHOLD: u16 = 3;
-                let log_top = 2; // Top bar (1) + log border (1)
+                let log_top = if app.show_info {
+                    2 + 6 // Top bar (1) + info box (6) + log border (1)
+                } else {
+                    2 // Top bar (1) + log border (1)
+                };
                 let log_bottom = terminal_height.saturating_sub(1); // Bottom bar (1)
 
                 if mouse.row <= log_top + SCROLL_THRESHOLD {
@@ -352,9 +364,13 @@ fn screen_to_log_position(app: &AppState, screen_col: u16, screen_row: u16, term
 
     // Calculate the log pane inner area
     // Log pane starts at TASK_LIST_WIDTH, with 1 char border on left
-    // Top bar (1) + log pane border top (1) = 2
+    // If info box is visible, log pane starts below it
     let log_inner_left = TASK_LIST_WIDTH + 1;
-    let log_inner_top = 2;
+    let log_inner_top = if app.show_info {
+        2 + 6 // Top bar (1) + info box (6) + log pane border top (1) = 8, but we already count 2 for top bar + border
+    } else {
+        2 // Top bar (1) + log pane border top (1)
+    };
 
     if screen_col < log_inner_left || screen_row < log_inner_top {
         return None;
@@ -371,7 +387,12 @@ fn screen_to_log_position(app: &AppState, screen_col: u16, screen_row: u16, term
 
     // Calculate actual visible height for logs
     // Terminal height - top bar (1) - bottom bar (1) - log borders (2) = inner height
-    let inner_height = terminal_height.saturating_sub(4) as usize;
+    // If info box is visible, also subtract info box height (6)
+    let inner_height = if app.show_info {
+        terminal_height.saturating_sub(4 + 6) as usize
+    } else {
+        terminal_height.saturating_sub(4) as usize
+    };
 
     // Account for scrolling to find the actual line index
     let total_lines = log_lines.len();
