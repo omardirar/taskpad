@@ -2,7 +2,6 @@
 ///
 /// This module provides functionality for discovering tasks from various sources.
 /// Supports both Just recipes and Make targets.
-
 use crate::app::Task;
 use color_eyre::eyre::Result;
 

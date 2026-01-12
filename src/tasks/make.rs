@@ -2,7 +2,6 @@
 ///
 /// This module provides functionality to discover available Make targets
 /// in the current directory by running `make -qp` and parsing its output.
-
 use crate::app::{Task, TaskRunner};
 use color_eyre::eyre::{eyre, Result};
 use std::process::Command;
@@ -110,11 +109,10 @@ fn parse_make_database(output: &str) -> Result<Vec<Task>> {
         }
 
         // Skip variable assignments (contain = before :)
-        if let Some(colon_pos) = trimmed.find(':') {
-            if trimmed[..colon_pos].contains('=') {
+        if let Some(colon_pos) = trimmed.find(':')
+            && trimmed[..colon_pos].contains('=') {
                 continue;
             }
-        }
 
         // Extract target name (everything before the first colon)
         let target = if let Some(colon_pos) = trimmed.find(':') {

@@ -1,5 +1,4 @@
 /// Core application data structures and state management for Taskpad.
-
 /// Task runner type.
 #[derive(Debug, Clone, PartialEq)]
 pub enum TaskRunner {

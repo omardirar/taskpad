@@ -2,7 +2,6 @@
 ///
 /// This is the main entry point that sets up the terminal, discovers tasks,
 /// and runs the main event loop.
-
 mod app;
 mod process;
 mod tasks;
@@ -57,13 +56,11 @@ fn run_app_with_error(app: AppState) -> Result<()> {
 
     // Wait for 'q' key to quit
     loop {
-        if event::poll(Duration::from_millis(100))? {
-            if let Event::Key(key) = event::read()? {
-                if key.kind == KeyEventKind::Press && key.code == KeyCode::Char('q') {
+        if event::poll(Duration::from_millis(100))?
+            && let Event::Key(key) = event::read()?
+                && key.kind == KeyEventKind::Press && key.code == KeyCode::Char('q') {
                     break;
                 }
-            }
-        }
     }
 
     // Restore terminal
@@ -98,23 +95,20 @@ fn run_app(mut app: AppState) -> Result<()> {
             }
         }
 
-        if let Some(ref rx) = status_rx {
-            if let Ok(status) = rx.try_recv() {
+        if let Some(ref rx) = status_rx
+            && let Ok(status) = rx.try_recv() {
                 app.update_task_status(status);
                 // Task finished, clear the receivers
                 log_rx = None;
                 status_rx = None;
             }
-        }
 
         // Poll for keyboard events with a short timeout
-        if event::poll(Duration::from_millis(50))? {
-            if let Event::Key(key) = event::read()? {
-                if key.kind == KeyEventKind::Press {
+        if event::poll(Duration::from_millis(50))?
+            && let Event::Key(key) = event::read()?
+                && key.kind == KeyEventKind::Press {
                     handle_key_event(&mut app, key, &mut log_rx, &mut status_rx);
                 }
-            }
-        }
 
         // Check if we should quit
         if app.quitting {
