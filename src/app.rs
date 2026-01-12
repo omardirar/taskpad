@@ -422,6 +422,26 @@ impl AppState {
         self.log_auto_scroll = true;
     }
 
+    /// Scrolls the info view up by the given number of lines (see earlier content)
+    pub fn scroll_info_up(&mut self, lines: usize) {
+        self.info_scroll_offset = self.info_scroll_offset.saturating_sub(lines);
+    }
+
+    /// Scrolls the info view down by the given number of lines (see later content)
+    pub fn scroll_info_down(&mut self, lines: usize) {
+        self.info_scroll_offset = self.info_scroll_offset.saturating_add(lines);
+    }
+
+    /// Scrolls the history view up by the given number of lines (see earlier content)
+    pub fn scroll_history_up(&mut self, lines: usize) {
+        self.history_scroll_offset = self.history_scroll_offset.saturating_sub(lines);
+    }
+
+    /// Scrolls the history view down by the given number of lines (see later content)
+    pub fn scroll_history_down(&mut self, lines: usize) {
+        self.history_scroll_offset = self.history_scroll_offset.saturating_add(lines);
+    }
+
     /// Starts running a task and resets log scrolling for new output
     pub fn start_task_with_scroll_reset(&mut self, task: Task) {
         self.start_task(task);

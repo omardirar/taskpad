@@ -88,8 +88,17 @@ fn run_app(mut app: AppState) -> Result<()> {
         terminal.draw(|frame| ui::render(frame, &app))?;
 
         // Update scroll offset for task list
-        let visible_height = terminal.size()?.height.saturating_sub(4) as usize; // Account for borders and bars
-        app.adjust_task_scroll(visible_height);
+        // Calculate the actual visible height for the task list based on layout
+        let terminal_height = terminal.size()?.height;
+        let content_height = terminal_height.saturating_sub(2) as usize; // Subtract top and bottom bars
+        let task_list_outer_height = match (app.show_history, app.show_info) {
+            (true, true) => content_height.saturating_sub(8 + 6), // history (8) + info (6)
+            (true, false) => content_height.saturating_sub(8),    // history (8)
+            (false, true) => content_height.saturating_sub(6),    // info (6)
+            (false, false) => content_height,
+        };
+        let task_list_inner_height = task_list_outer_height.saturating_sub(2); // Subtract borders
+        app.adjust_task_scroll(task_list_inner_height);
 
         // Check for process events (log lines, status updates)
         if let Some(ref rx) = log_rx {
@@ -219,6 +228,7 @@ fn handle_scroll_up(app: &mut AppState, column: u16, row: u16, terminal_height: 
         // Left side: determine which region and scroll accordingly
         match get_left_region(app, row, terminal_height) {
             LeftRegion::TaskList => {
+                // Move selection up (scroll follows selection automatically)
                 app.move_selection_up();
             }
             LeftRegion::History => {
@@ -242,6 +252,7 @@ fn handle_scroll_down(app: &mut AppState, column: u16, row: u16, terminal_height
         // Left side: determine which region and scroll accordingly
         match get_left_region(app, row, terminal_height) {
             LeftRegion::TaskList => {
+                // Move selection down (scroll follows selection automatically)
                 app.move_selection_down();
             }
             LeftRegion::History => {
