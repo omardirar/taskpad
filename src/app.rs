@@ -249,9 +249,24 @@ mod tests {
     #[test]
     fn test_move_selection_up() {
         let tasks = vec![
-            Task { id: 0, name: "task1".to_string(), description: None, runner: TaskRunner::Just },
-            Task { id: 1, name: "task2".to_string(), description: None, runner: TaskRunner::Just },
-            Task { id: 2, name: "task3".to_string(), description: None, runner: TaskRunner::Just },
+            Task {
+                id: 0,
+                name: "task1".to_string(),
+                description: None,
+                runner: TaskRunner::Just,
+            },
+            Task {
+                id: 1,
+                name: "task2".to_string(),
+                description: None,
+                runner: TaskRunner::Just,
+            },
+            Task {
+                id: 2,
+                name: "task3".to_string(),
+                description: None,
+                runner: TaskRunner::Just,
+            },
         ];
         let mut app = AppState::new(tasks);
         app.selected_index = 1;
@@ -267,9 +282,24 @@ mod tests {
     #[test]
     fn test_move_selection_down() {
         let tasks = vec![
-            Task { id: 0, name: "task1".to_string(), description: None, runner: TaskRunner::Just },
-            Task { id: 1, name: "task2".to_string(), description: None, runner: TaskRunner::Just },
-            Task { id: 2, name: "task3".to_string(), description: None, runner: TaskRunner::Just },
+            Task {
+                id: 0,
+                name: "task1".to_string(),
+                description: None,
+                runner: TaskRunner::Just,
+            },
+            Task {
+                id: 1,
+                name: "task2".to_string(),
+                description: None,
+                runner: TaskRunner::Just,
+            },
+            Task {
+                id: 2,
+                name: "task3".to_string(),
+                description: None,
+                runner: TaskRunner::Just,
+            },
         ];
         let mut app = AppState::new(tasks);
 
@@ -289,7 +319,12 @@ mod tests {
         let mut app = AppState::new(vec![]);
         assert!(!app.is_task_running());
 
-        let task = Task { id: 0, name: "test".to_string(), description: None, runner: TaskRunner::Just };
+        let task = Task {
+            id: 0,
+            name: "test".to_string(),
+            description: None,
+            runner: TaskRunner::Just,
+        };
         app.start_task(task);
         assert!(app.is_task_running());
 

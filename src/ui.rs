@@ -4,11 +4,11 @@
 /// Rendering is a pure function of the AppState.
 use crate::app::{AppState, TaskStatus};
 use ratatui::{
+    Frame,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, Paragraph, Wrap},
-    Frame,
 };
 
 /// Layout constants
@@ -31,7 +31,7 @@ pub fn render(frame: &mut Frame, app: &AppState) {
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(1), // Top status bar
-            Constraint::Min(0),     // Content area
+            Constraint::Min(0),    // Content area
             Constraint::Length(1), // Bottom key hints bar
         ])
         .split(size);
@@ -44,7 +44,7 @@ pub fn render(frame: &mut Frame, app: &AppState) {
         .direction(Direction::Horizontal)
         .constraints([
             Constraint::Length(TASK_LIST_WIDTH), // Task list
-            Constraint::Min(0),                   // Log pane
+            Constraint::Min(0),                  // Log pane
         ])
         .split(chunks[1]);
 
@@ -64,9 +64,23 @@ fn render_status_bar(frame: &mut Frame, app: &AppState, area: Rect) {
         format!("Taskpad | {}", msg)
     } else if let Some(ref running) = app.running_task {
         match running.status {
-            TaskStatus::Running => format!("Taskpad | Running: {} {}", running.task.runner.prefix(), running.task.name),
-            TaskStatus::Success(code) => format!("Taskpad | Last: {} {} (exit={})", running.task.runner.prefix(), running.task.name, code),
-            TaskStatus::Failed(code) => format!("Taskpad | Failed: {} {} (exit={})", running.task.runner.prefix(), running.task.name, code),
+            TaskStatus::Running => format!(
+                "Taskpad | Running: {} {}",
+                running.task.runner.prefix(),
+                running.task.name
+            ),
+            TaskStatus::Success(code) => format!(
+                "Taskpad | Last: {} {} (exit={})",
+                running.task.runner.prefix(),
+                running.task.name,
+                code
+            ),
+            TaskStatus::Failed(code) => format!(
+                "Taskpad | Failed: {} {} (exit={})",
+                running.task.runner.prefix(),
+                running.task.name,
+                code
+            ),
         }
     } else {
         "Taskpad | Idle".to_string()
@@ -124,7 +138,9 @@ fn render_task_list(frame: &mut Frame, app: &AppState, area: Rect) {
             let is_selected = actual_idx == app.selected_index;
 
             // Check if this task is the currently running one
-            let is_running = app.running_task.as_ref()
+            let is_running = app
+                .running_task
+                .as_ref()
                 .map(|rt| rt.task.name == task.name && rt.status == TaskStatus::Running)
                 .unwrap_or(false);
 
@@ -141,7 +157,9 @@ fn render_task_list(frame: &mut Frame, app: &AppState, area: Rect) {
                 Span::raw(prefix),
                 Span::styled(
                     format!("{} ", task.runner.prefix()),
-                    Style::default().add_modifier(Modifier::BOLD).fg(Color::Cyan)
+                    Style::default()
+                        .add_modifier(Modifier::BOLD)
+                        .fg(Color::Cyan),
                 ),
                 Span::raw(&task.name),
             ];
@@ -154,9 +172,7 @@ fn render_task_list(frame: &mut Frame, app: &AppState, area: Rect) {
             let line = Line::from(spans);
 
             let style = if is_selected {
-                Style::default()
-                    .bg(Color::White)
-                    .fg(Color::Black)
+                Style::default().bg(Color::White).fg(Color::Black)
             } else if is_running {
                 Style::default().fg(Color::Yellow)
             } else {
@@ -174,7 +190,11 @@ fn render_task_list(frame: &mut Frame, app: &AppState, area: Rect) {
 /// Renders the log pane on the right side showing task output.
 fn render_log_pane(frame: &mut Frame, app: &AppState, area: Rect) {
     let title = if let Some(ref running) = app.running_task {
-        format!("Logs - {} {}", running.task.runner.prefix(), running.task.name)
+        format!(
+            "Logs - {} {}",
+            running.task.runner.prefix(),
+            running.task.name
+        )
     } else {
         "Logs".to_string()
     };
@@ -209,7 +229,10 @@ fn render_log_pane(frame: &mut Frame, app: &AppState, area: Rect) {
                 if line.starts_with("[stderr]") {
                     Line::from(Span::styled(line.clone(), Style::default().fg(Color::Red)))
                 } else if line.starts_with("ERROR") {
-                    Line::from(Span::styled(line.clone(), Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)))
+                    Line::from(Span::styled(
+                        line.clone(),
+                        Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                    ))
                 } else if line.starts_with("Starting task:") || line.starts_with("Task exited") {
                     Line::from(Span::styled(line.clone(), Style::default().fg(Color::Cyan)))
                 } else {
@@ -224,9 +247,10 @@ fn render_log_pane(frame: &mut Frame, app: &AppState, area: Rect) {
 
         frame.render_widget(paragraph, area);
     } else {
-        let message = Paragraph::new("Select a task and press Enter to run it.\nOutput will appear here.")
-            .block(block)
-            .wrap(Wrap { trim: true });
+        let message =
+            Paragraph::new("Select a task and press Enter to run it.\nOutput will appear here.")
+                .block(block)
+                .wrap(Wrap { trim: true });
         frame.render_widget(message, area);
     }
 }
