@@ -12,14 +12,11 @@ use color_eyre::eyre::Result;
 use crossterm::{
     event::{self, Event, KeyCode, KeyEvent, KeyEventKind},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
-use ratatui::{
-    backend::CrosstermBackend,
-    Terminal,
-};
+use ratatui::{Terminal, backend::CrosstermBackend};
 use std::io;
-use std::sync::mpsc::{channel, Receiver};
+use std::sync::mpsc::{Receiver, channel};
 use std::time::Duration;
 
 /// Main entry point for Taskpad.
@@ -58,9 +55,11 @@ fn run_app_with_error(app: AppState) -> Result<()> {
     loop {
         if event::poll(Duration::from_millis(100))?
             && let Event::Key(key) = event::read()?
-                && key.kind == KeyEventKind::Press && key.code == KeyCode::Char('q') {
-                    break;
-                }
+            && key.kind == KeyEventKind::Press
+            && key.code == KeyCode::Char('q')
+        {
+            break;
+        }
     }
 
     // Restore terminal
@@ -96,19 +95,21 @@ fn run_app(mut app: AppState) -> Result<()> {
         }
 
         if let Some(ref rx) = status_rx
-            && let Ok(status) = rx.try_recv() {
-                app.update_task_status(status);
-                // Task finished, clear the receivers
-                log_rx = None;
-                status_rx = None;
-            }
+            && let Ok(status) = rx.try_recv()
+        {
+            app.update_task_status(status);
+            // Task finished, clear the receivers
+            log_rx = None;
+            status_rx = None;
+        }
 
         // Poll for keyboard events with a short timeout
         if event::poll(Duration::from_millis(50))?
             && let Event::Key(key) = event::read()?
-                && key.kind == KeyEventKind::Press {
-                    handle_key_event(&mut app, key, &mut log_rx, &mut status_rx);
-                }
+            && key.kind == KeyEventKind::Press
+        {
+            handle_key_event(&mut app, key, &mut log_rx, &mut status_rx);
+        }
 
         // Check if we should quit
         if app.quitting {
