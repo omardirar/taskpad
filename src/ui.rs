@@ -2,7 +2,9 @@
 ///
 /// This module contains all layout and drawing logic for the TUI.
 /// Rendering is a pure function of the AppState.
-use crate::app::{display_col_to_byte_idx, str_display_width, AppState, FocusedPane, HistoryEntry, TaskStatus};
+use crate::app::{
+    AppState, FocusedPane, HistoryEntry, TaskStatus, display_col_to_byte_idx, str_display_width,
+};
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -549,7 +551,8 @@ fn render_log_pane(frame: &mut Frame, app: &AppState, area: Rect) {
                             let end_byte = display_col_to_byte_idx(line, sel_end.col);
 
                             if start_byte > 0 {
-                                spans.push(Span::styled(line[..start_byte].to_string(), base_style));
+                                spans
+                                    .push(Span::styled(line[..start_byte].to_string(), base_style));
                             }
                             if end_byte > start_byte {
                                 spans.push(Span::styled(
@@ -564,7 +567,8 @@ fn render_log_pane(frame: &mut Frame, app: &AppState, area: Rect) {
                             // First line of multi-line selection
                             let start_byte = display_col_to_byte_idx(line, sel_start.col);
                             if start_byte > 0 {
-                                spans.push(Span::styled(line[..start_byte].to_string(), base_style));
+                                spans
+                                    .push(Span::styled(line[..start_byte].to_string(), base_style));
                             }
                             spans.push(Span::styled(
                                 line[start_byte..].to_string(),
