@@ -433,15 +433,18 @@ fn render_history_container(frame: &mut Frame, app: &AppState, area: Rect) {
     }
 }
 
-/// Formats a SystemTime as a human-readable timestamp
+/// Formats a SystemTime as a human-readable timestamp in local time
 fn format_timestamp(time: &SystemTime) -> String {
     match time.duration_since(SystemTime::UNIX_EPOCH) {
         Ok(duration) => {
-            let secs = duration.as_secs();
-            let hours = (secs / 3600) % 24;
-            let minutes = (secs / 60) % 60;
-            let seconds = secs % 60;
-            format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
+            let secs = duration.as_secs() as libc::time_t;
+            let mut tm: libc::tm = unsafe { std::mem::zeroed() };
+            // SAFETY: localtime_r is thread-safe and writes to our stack-allocated tm
+            let result = unsafe { libc::localtime_r(&secs, &mut tm) };
+            if result.is_null() {
+                return "??:??:??".to_string();
+            }
+            format!("{:02}:{:02}:{:02}", tm.tm_hour, tm.tm_min, tm.tm_sec)
         }
         Err(_) => "??:??:??".to_string(),
     }
