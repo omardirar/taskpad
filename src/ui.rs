@@ -266,16 +266,20 @@ fn render_info_box(frame: &mut Frame, app: &AppState, area: Rect) {
             if line.len() <= inner_width {
                 wrapped_lines.push(line.to_string());
             } else {
-                // Wrap long lines
+                // Wrap long lines with word-awareness
                 let mut remaining = line;
                 while !remaining.is_empty() {
                     if remaining.len() <= inner_width {
                         wrapped_lines.push(remaining.to_string());
                         break;
                     } else {
-                        let split_at = inner_width;
-                        wrapped_lines.push(remaining[..split_at].to_string());
-                        remaining = &remaining[split_at..];
+                        // Search backward from inner_width for a whitespace to break at
+                        let split_at = remaining[..inner_width]
+                            .rfind(char::is_whitespace)
+                            .map(|pos| pos + 1) // Include the whitespace at end of line
+                            .unwrap_or(inner_width); // Fall back to hard split if no whitespace
+                        wrapped_lines.push(remaining[..split_at].trim_end().to_string());
+                        remaining = remaining[split_at..].trim_start();
                     }
                 }
             }
