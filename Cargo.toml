@@ -9,12 +9,6 @@ build = "build.rs"
 repository = "https://github.com/omardirar/taskpad"
 homepage = "https://github.com/omardirar/taskpad"
 
-[package.metadata.wix]
-upgrade-guid = "B820BFD8-E191-4393-B0CD-7A0C5BC21604"
-path-guid = "85E9DE3E-F8A4-4E3C-93D1-E3CC9324F462"
-license = false
-eula = false
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
