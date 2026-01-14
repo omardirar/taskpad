@@ -280,8 +280,7 @@ fn render_info_box(frame: &mut Frame, app: &AppState, area: Rect) {
                         // Search backward from that point for whitespace to break at
                         let split_at = remaining[..max_byte_idx]
                             .char_indices()
-                            .filter(|(_, ch)| ch.is_whitespace())
-                            .next_back()
+                            .rfind(|(_, ch)| ch.is_whitespace())
                             .map(|(pos, ch)| pos + ch.len_utf8()) // Move past the whitespace char
                             .unwrap_or(max_byte_idx); // Fall back to hard split if no whitespace
                         wrapped_lines.push(remaining[..split_at].trim_end().to_string());
