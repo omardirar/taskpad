@@ -125,8 +125,8 @@ fn run_app(mut app: AppState) -> Result<()> {
         }
 
         // Poll for keyboard and mouse events with a short timeout
+        // ~60 FPS for smoother mouse tracking and auto-scroll during drag selection
         if event::poll(Duration::from_millis(16))? {
-            // ~60 FPS for smoother streaming
             match event::read()? {
                 Event::Key(key) => {
                     if key.kind == KeyEventKind::Press {
