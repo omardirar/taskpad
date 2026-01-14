@@ -9,6 +9,12 @@ const MAX_LOG_LINES_PER_TASK: usize = 10_000;
 /// Maximum number of history entries to store to prevent unbounded memory growth.
 const MAX_HISTORY_ENTRIES: usize = 100;
 
+/// Returns the display width of a string, accounting for character widths.
+/// Wide characters (e.g., CJK, emoji) count as 2 columns.
+pub fn str_display_width(s: &str) -> usize {
+    s.chars().map(|ch| ch.width().unwrap_or(0)).sum()
+}
+
 /// Converts a display column (screen position) to a byte index in the string.
 /// Display columns account for character widths (e.g., CJK characters take 2 columns).
 /// Returns the byte index at which the cumulative display width reaches or exceeds the target column.

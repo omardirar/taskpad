@@ -2,7 +2,7 @@
 ///
 /// This module contains all layout and drawing logic for the TUI.
 /// Rendering is a pure function of the AppState.
-use crate::app::{display_col_to_byte_idx, AppState, FocusedPane, HistoryEntry, TaskStatus};
+use crate::app::{display_col_to_byte_idx, str_display_width, AppState, FocusedPane, HistoryEntry, TaskStatus};
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -263,21 +263,25 @@ fn render_info_box(frame: &mut Frame, app: &AppState, area: Rect) {
 
         let mut wrapped_lines = Vec::new();
         for line in content.lines() {
-            if line.len() <= inner_width {
+            if str_display_width(line) <= inner_width {
                 wrapped_lines.push(line.to_string());
             } else {
-                // Wrap long lines with word-awareness
+                // Wrap long lines with word-awareness using character-safe slicing
                 let mut remaining = line;
                 while !remaining.is_empty() {
-                    if remaining.len() <= inner_width {
+                    if str_display_width(remaining) <= inner_width {
                         wrapped_lines.push(remaining.to_string());
                         break;
                     } else {
-                        // Search backward from inner_width for a whitespace to break at
-                        let split_at = remaining[..inner_width]
-                            .rfind(char::is_whitespace)
-                            .map(|pos| pos + 1) // Include the whitespace at end of line
-                            .unwrap_or(inner_width); // Fall back to hard split if no whitespace
+                        // Find byte index where display width reaches inner_width
+                        let max_byte_idx = display_col_to_byte_idx(remaining, inner_width);
+                        // Search backward from that point for whitespace to break at
+                        let split_at = remaining[..max_byte_idx]
+                            .char_indices()
+                            .filter(|(_, ch)| ch.is_whitespace())
+                            .next_back()
+                            .map(|(pos, ch)| pos + ch.len_utf8()) // Move past the whitespace char
+                            .unwrap_or(max_byte_idx); // Fall back to hard split if no whitespace
                         wrapped_lines.push(remaining[..split_at].trim_end().to_string());
                         remaining = remaining[split_at..].trim_start();
                     }
