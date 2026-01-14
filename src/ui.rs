@@ -444,11 +444,26 @@ fn format_timestamp(time: &SystemTime) -> String {
         Ok(duration) => {
             let secs = duration.as_secs() as libc::time_t;
             let mut tm: libc::tm = unsafe { std::mem::zeroed() };
-            // SAFETY: localtime_r is thread-safe and writes to our stack-allocated tm
-            let result = unsafe { libc::localtime_r(&secs, &mut tm) };
-            if result.is_null() {
-                return "??:??:??".to_string();
+
+            // Platform-specific time conversion
+            #[cfg(not(target_os = "windows"))]
+            {
+                // POSIX: localtime_r is thread-safe and writes to our stack-allocated tm
+                let result = unsafe { libc::localtime_r(&secs, &mut tm) };
+                if result.is_null() {
+                    return "??:??:??".to_string();
+                }
             }
+
+            #[cfg(target_os = "windows")]
+            {
+                // Windows: localtime_s has reversed arguments
+                let result = unsafe { libc::localtime_s(&mut tm, &secs) };
+                if result != 0 {
+                    return "??:??:??".to_string();
+                }
+            }
+
             format!("{:02}:{:02}:{:02}", tm.tm_hour, tm.tm_min, tm.tm_sec)
         }
         Err(_) => "??:??:??".to_string(),
