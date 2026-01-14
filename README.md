@@ -1,8 +1,26 @@
 # Taskpad
 
-[![CI](https://github.com/omardirar/taskpad/workflows/CI/badge.svg)](https://github.com/omardirar/taskpad/actions)
+<div align="center">
+
+<img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/omardirar/taskpad/ci.yml"> <img alt="GitHub Release Date" src="https://img.shields.io/github/release-date/omardirar/taskpad?link=https%3A%2F%2Fgithub.com%2Fomardirar%2Ftaskpad%2Freleases%2Flatest"> <img alt="GitHub Release" src="https://img.shields.io/github/v/release/omardirar/taskpad?logoColor=blue&link=https%3A%2F%2Fgithub.com%2Fomardirar%2Ftaskpad%2Freleases%2Flatest"> <img alt="GitHub Downloads (all assets, all releases)" src="https://img.shields.io/github/downloads/omardirar/taskpad/total">
 
 A keyboard-driven TUI task launcher that discovers and runs tasks from multiple task runners.
+
+<img src="docs/assets/demo.gif" alt="demo" style="max-width: 600px; width: auto;">
+</div>
+
+## Table of Contents
+
+- [What is Taskpad?](#what-is-taskpad)
+- [Features](#features)
+- [Installation](#installation)
+- [Requirements](#requirements)
+- [Usage](#usage)
+- [Example](#example)
+- [Error Handling](#error-handling)
+- [Contributing](#contributing)
+- [License](#license)
+- [Acknowledgments](#acknowledgments)
 
 ## What is Taskpad?
 
