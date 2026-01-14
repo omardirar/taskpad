@@ -14,11 +14,11 @@ use crossterm::{
         self, Event, KeyCode, KeyEvent, KeyEventKind, MouseButton, MouseEvent, MouseEventKind,
     },
     execute,
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{Terminal, backend::CrosstermBackend};
+use ratatui::{backend::CrosstermBackend, Terminal};
 use std::io;
-use std::sync::mpsc::{Receiver, channel};
+use std::sync::mpsc::{channel, Receiver};
 use std::time::Duration;
 
 /// Main entry point for Taskpad.
@@ -347,36 +347,33 @@ fn handle_mouse_event(
 
         // Handle mouse drag for text selection
         MouseEventKind::Drag(MouseButton::Left) => {
-            if app.is_selecting
-                && mouse.column >= TASK_LIST_WIDTH
-                && mouse.row >= 2
-            {
+            if app.is_selecting && mouse.column >= TASK_LIST_WIDTH && mouse.row >= 2 {
                 if let Some(pos) =
                     screen_to_log_position(app, mouse.column, mouse.row, terminal_height)
                 {
                     app.update_selection(pos);
 
-                // Check if we should auto-scroll
-                // Top edge threshold: within 3 rows of top of logs
-                // Bottom edge threshold: within 3 rows of bottom of terminal (terminal_height - 3)
-                const SCROLL_THRESHOLD: u16 = 3;
-                let log_top = if app.show_info {
-                    2 + 6 // Top bar (1) + info box (6) + log border (1)
-                } else {
-                    2 // Top bar (1) + log border (1)
-                };
-                let log_bottom = terminal_height.saturating_sub(1); // Bottom bar (1)
+                    // Check if we should auto-scroll
+                    // Top edge threshold: within 3 rows of top of logs
+                    // Bottom edge threshold: within 3 rows of bottom of terminal (terminal_height - 3)
+                    const SCROLL_THRESHOLD: u16 = 3;
+                    let log_top = if app.show_info {
+                        2 + 6 // Top bar (1) + info box (6) + log border (1)
+                    } else {
+                        2 // Top bar (1) + log border (1)
+                    };
+                    let log_bottom = terminal_height.saturating_sub(1); // Bottom bar (1)
 
-                if mouse.row <= log_top + SCROLL_THRESHOLD {
-                    // Near top edge - scroll up
-                    app.set_drag_scroll(Some(app::DragScrollDirection::Up), Some(pos));
-                } else if mouse.row >= log_bottom.saturating_sub(SCROLL_THRESHOLD) {
-                    // Near bottom edge - scroll down
-                    app.set_drag_scroll(Some(app::DragScrollDirection::Down), Some(pos));
-                } else {
-                    // Not near edges - stop auto-scrolling
-                    app.set_drag_scroll(None, Some(pos));
-                }
+                    if mouse.row <= log_top + SCROLL_THRESHOLD {
+                        // Near top edge - scroll up
+                        app.set_drag_scroll(Some(app::DragScrollDirection::Up), Some(pos));
+                    } else if mouse.row >= log_bottom.saturating_sub(SCROLL_THRESHOLD) {
+                        // Near bottom edge - scroll down
+                        app.set_drag_scroll(Some(app::DragScrollDirection::Down), Some(pos));
+                    } else {
+                        // Not near edges - stop auto-scrolling
+                        app.set_drag_scroll(None, Some(pos));
+                    }
                 }
             }
         }

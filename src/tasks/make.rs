@@ -3,7 +3,7 @@
 /// This module provides functionality to discover available Make targets
 /// in the current directory by running `make -qp` and parsing its output.
 use crate::app::{Task, TaskRunner};
-use color_eyre::eyre::{Result, eyre};
+use color_eyre::eyre::{eyre, Result};
 use std::process::Command;
 
 /// Discovers available Make targets in the current directory.

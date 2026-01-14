@@ -3,10 +3,9 @@
 /// This module contains all layout and drawing logic for the TUI.
 /// Rendering is a pure function of the AppState.
 use crate::app::{
-    AppState, FocusedPane, HistoryEntry, TaskStatus, display_col_to_byte_idx, str_display_width,
+    display_col_to_byte_idx, str_display_width, AppState, FocusedPane, HistoryEntry, TaskStatus,
 };
 use ratatui::{
-    Frame,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
@@ -14,6 +13,7 @@ use ratatui::{
         Block, Borders, List, ListItem, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState,
         Wrap,
     },
+    Frame,
 };
 use std::time::SystemTime;
 
