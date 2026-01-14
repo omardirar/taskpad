@@ -491,19 +491,19 @@ impl AppState {
 
     /// Moves history selection up (to newer entries)
     pub fn move_history_selection_up(&mut self) {
-        if let Some(current) = self.selected_history_index
-            && current > 0
-        {
-            self.selected_history_index = Some(current - 1);
+        if let Some(current) = self.selected_history_index {
+            if current > 0 {
+                self.selected_history_index = Some(current - 1);
+            }
         }
     }
 
     /// Moves history selection down (to older entries)
     pub fn move_history_selection_down(&mut self) {
-        if let Some(current) = self.selected_history_index
-            && current < self.task_history.len().saturating_sub(1)
-        {
-            self.selected_history_index = Some(current + 1);
+        if let Some(current) = self.selected_history_index {
+            if current < self.task_history.len().saturating_sub(1) {
+                self.selected_history_index = Some(current + 1);
+            }
         }
     }
 

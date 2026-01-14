@@ -107,10 +107,10 @@ fn parse_make_database(output: &str) -> Result<Vec<Task>> {
         }
 
         // Skip variable assignments (contain = before :)
-        if let Some(colon_pos) = trimmed.find(':')
-            && trimmed[..colon_pos].contains('=')
-        {
-            continue;
+        if let Some(colon_pos) = trimmed.find(':') {
+            if trimmed[..colon_pos].contains('=') {
+                continue;
+            }
         }
 
         // Extract target name (everything before the first colon)
