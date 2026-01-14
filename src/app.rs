@@ -486,11 +486,7 @@ impl AppState {
     pub fn selected_history_entry(&self) -> Option<&HistoryEntry> {
         let idx = self.selected_history_index?;
         // History is stored chronologically but displayed reversed
-        let actual_idx = self
-            .task_history
-            .len()
-            .saturating_sub(1)
-            .saturating_sub(idx);
+        let actual_idx = self.task_history.len().checked_sub(idx + 1)?;
         self.task_history.get(actual_idx)
     }
 
