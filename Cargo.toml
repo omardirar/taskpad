@@ -1,6 +1,6 @@
 [package]
 name = "taskpad"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 description = "simple task runner terminal UI"
 authors = ["Omar Dirar <github@dirar.xyz>"]
