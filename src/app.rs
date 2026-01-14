@@ -2,6 +2,9 @@
 use std::collections::HashMap;
 use std::time::SystemTime;
 
+/// Maximum number of log lines to store per task to prevent unbounded memory growth.
+const MAX_LOG_LINES_PER_TASK: usize = 10_000;
+
 /// Represents a position in the log pane (line index, column index)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LogPosition {
@@ -311,10 +314,15 @@ impl AppState {
     pub fn append_log(&mut self, line: String) {
         if let Some(ref mut running) = self.running_task {
             // Append to the task-specific log history
-            self.task_logs
-                .entry(running.task.id)
-                .or_default()
-                .push(line.clone());
+            let logs = self.task_logs.entry(running.task.id).or_default();
+            logs.push(line.clone());
+
+            // Enforce per-task log limit to prevent unbounded memory growth
+            if logs.len() > MAX_LOG_LINES_PER_TASK {
+                let excess = logs.len() - MAX_LOG_LINES_PER_TASK;
+                logs.drain(0..excess);
+            }
+
             // Also append to the running task for compatibility
             running.append_log(line);
         }
