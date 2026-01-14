@@ -1,12 +1,28 @@
 /// Core application data structures and state management for Taskpad.
 use std::collections::HashMap;
 use std::time::SystemTime;
+use unicode_width::UnicodeWidthChar;
 
 /// Maximum number of log lines to store per task to prevent unbounded memory growth.
 const MAX_LOG_LINES_PER_TASK: usize = 10_000;
 
 /// Maximum number of history entries to store to prevent unbounded memory growth.
 const MAX_HISTORY_ENTRIES: usize = 100;
+
+/// Converts a display column (screen position) to a byte index in the string.
+/// Display columns account for character widths (e.g., CJK characters take 2 columns).
+/// Returns the byte index at which the cumulative display width reaches or exceeds the target column.
+fn display_col_to_byte_idx(s: &str, display_col: usize) -> usize {
+    let mut current_width = 0;
+    for (byte_idx, ch) in s.char_indices() {
+        if current_width >= display_col {
+            return byte_idx;
+        }
+        current_width += ch.width().unwrap_or(0);
+    }
+    // If we've gone through all characters, return the string length
+    s.len()
+}
 
 /// Represents a position in the log pane (line index, column index)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -662,9 +678,10 @@ impl AppState {
         if start.line == end.line {
             // Single line selection
             if let Some(line) = log_lines.get(start.line) {
-                let end_col = end.col.min(line.len());
-                let start_col = start.col.min(end_col);
-                result.push_str(&line[start_col..end_col]);
+                // Convert display columns to byte indices for safe UTF-8 slicing
+                let start_byte = display_col_to_byte_idx(line, start.col);
+                let end_byte = display_col_to_byte_idx(line, end.col);
+                result.push_str(&line[start_byte..end_byte]);
             }
         } else {
             // Multi-line selection
@@ -672,12 +689,12 @@ impl AppState {
                 if let Some(line) = log_lines.get(line_idx) {
                     if line_idx == start.line {
                         // First line: from start.col to end
-                        let start_col = start.col.min(line.len());
-                        result.push_str(&line[start_col..]);
+                        let start_byte = display_col_to_byte_idx(line, start.col);
+                        result.push_str(&line[start_byte..]);
                     } else if line_idx == end.line {
                         // Last line: from beginning to end.col
-                        let end_col = end.col.min(line.len());
-                        result.push_str(line.get(..end_col).unwrap_or(line));
+                        let end_byte = display_col_to_byte_idx(line, end.col);
+                        result.push_str(&line[..end_byte]);
                     } else {
                         // Middle lines: entire line
                         result.push_str(line);
