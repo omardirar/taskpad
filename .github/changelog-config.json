@@ -1,0 +1,43 @@
+{
+  "categories": [
+    {
+      "title": "## Features ✨",
+      "labels": ["feature"]
+    },
+    {
+      "title": "## Enhancements 🔥",
+      "labels": ["enhancement"]
+    },
+    {
+      "title": "## Fixes 🔧",
+      "labels": ["bug"]
+    },
+    {
+      "title": "## Maintenance ⚙️",
+      "labels": ["maintenance"]
+    },
+    {
+      "title": "## Docs 📖",
+      "labels": ["docs"]
+    },
+    {
+      "title": "## I18n 🌎",
+      "labels": ["i18n"]
+    },
+    {
+      "title": "## Performance Improvements 📊",
+      "labels": ["performance"]
+    },
+    {
+      "title": "## Other Changes",
+      "labels": ["*"]
+    }
+  ],
+  "ignore_labels": [
+    "ignore-for-release"
+  ],
+  "sort": "ASC",
+  "template": "#{{CHANGELOG}}",
+  "pr_template": "- #{{TITLE}} (#{{NUMBER}})",
+  "empty_template": "- No changes"
+}

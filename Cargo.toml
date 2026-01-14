@@ -1,11 +1,19 @@
 [package]
 name = "taskpad"
-version = "0.0.0"
+version = "0.1.0"
 edition = "2024"
 description = "simple task runner terminal UI"
 authors = ["Omar Dirar <github@dirar.xyz>"]
+license = "MIT"
 build = "build.rs"
-repository = "https://github.com/omzification/taskpad"
+repository = "https://github.com/omardirar/taskpad"
+homepage = "https://github.com/omardirar/taskpad"
+
+[package.metadata.wix]
+upgrade-guid = "B820BFD8-E191-4393-B0CD-7A0C5BC21604"
+path-guid = "85E9DE3E-F8A4-4E3C-93D1-E3CC9324F462"
+license = false
+eula = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -47,3 +55,29 @@ tracing-subscriber = { version = "0.3.18", features = ["env-filter", "serde"] }
 [build-dependencies]
 anyhow = "1.0.90"
 vergen-gix = { version = "1.0.2", features = ["build", "cargo"] }
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
+
+# Config for 'cargo dist'
+[workspace.metadata.dist]
+# The preferred cargo-dist version to use in CI (Cargo.toml SemVer syntax)
+cargo-dist-version = "0.30.3"
+# CI backends to support
+ci = ["github"]
+# Allow custom modifications to CI workflow (for changelog generation)
+allow-dirty = ["ci"]
+# The installers to generate for each app
+installers = ["shell", "powershell", "npm", "homebrew", "msi"]
+# Target platforms to build apps for (Rust target-triple syntax)
+targets = ["aarch64-apple-darwin", "aarch64-unknown-linux-gnu", "aarch64-pc-windows-msvc", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-unknown-linux-musl", "x86_64-pc-windows-msvc"]
+# Path that installers should place binaries in
+install-path = "CARGO_HOME"
+# Whether to install an updater program
+install-updater = false
+# Publish Homebrew formula to custom tap
+tap = "omardirar/homebrew-tap"
+# Enable automatic publishing to Homebrew tap
+publish-jobs = ["homebrew"]
