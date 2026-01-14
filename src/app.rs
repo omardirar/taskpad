@@ -5,6 +5,9 @@ use std::time::SystemTime;
 /// Maximum number of log lines to store per task to prevent unbounded memory growth.
 const MAX_LOG_LINES_PER_TASK: usize = 10_000;
 
+/// Maximum number of history entries to store to prevent unbounded memory growth.
+const MAX_HISTORY_ENTRIES: usize = 100;
+
 /// Represents a position in the log pane (line index, column index)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LogPosition {
@@ -496,7 +499,7 @@ impl AppState {
         self.history_logs.get(&idx)
     }
 
-    /// Adds a task execution to history
+    /// Adds a task execution to history, removing oldest entries if limit exceeded
     pub fn add_to_history(&mut self, task_name: String, runner: TaskRunner, status: TaskStatus) {
         let entry = HistoryEntry {
             task_name,
@@ -505,15 +508,23 @@ impl AppState {
             status,
         };
         self.task_history.push(entry);
+
+        // Remove oldest entries if we exceed the limit
+        while self.task_history.len() > MAX_HISTORY_ENTRIES {
+            self.task_history.remove(0);
+        }
     }
 
     /// Stores logs for the most recent history entry
-    /// Shifts all existing history log indices up by 1
+    /// Shifts all existing history log indices up by 1 and removes entries beyond MAX_HISTORY_ENTRIES
     fn store_history_logs(&mut self, logs: Vec<String>) {
-        // Shift all existing history log entries up by 1
+        // Shift all existing history log entries up by 1, dropping entries beyond limit
         let mut new_history_logs = HashMap::new();
         for (idx, old_logs) in &self.history_logs {
-            new_history_logs.insert(idx + 1, old_logs.clone());
+            let new_idx = idx + 1;
+            if new_idx < MAX_HISTORY_ENTRIES {
+                new_history_logs.insert(new_idx, old_logs.clone());
+            }
         }
 
         // Store new logs at index 0 (most recent)
@@ -609,6 +620,7 @@ impl AppState {
         self.last_drag_position = position;
     }
 
+    // TODO: increase/decrease scroll speed based on how far outside bounds the mouse is
     /// Performs auto-scroll during drag selection
     pub fn perform_drag_scroll(&mut self) {
         if let Some(direction) = self.drag_scroll_direction {
