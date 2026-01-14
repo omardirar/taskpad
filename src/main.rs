@@ -608,8 +608,8 @@ fn handle_key_event(
             }
         }
 
-        // Clear logs
-        KeyCode::Char('c') => {
+        // Erase logs
+        KeyCode::Char('e') => {
             app.clear_logs();
             app.clear_selection();
             app.set_message("Logs cleared".to_string());
