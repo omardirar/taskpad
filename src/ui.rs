@@ -2,7 +2,7 @@
 ///
 /// This module contains all layout and drawing logic for the TUI.
 /// Rendering is a pure function of the AppState.
-use crate::app::{AppState, FocusedPane, HistoryEntry, TaskStatus};
+use crate::app::{display_col_to_byte_idx, AppState, FocusedPane, HistoryEntry, TaskStatus};
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -528,47 +528,48 @@ fn render_log_pane(frame: &mut Frame, app: &AppState, area: Rect) {
                     // Check if this line is within the selection range
                     if actual_line_idx >= sel_start.line && actual_line_idx <= sel_end.line {
                         // Build spans with selection highlighting
+                        // Convert display columns to byte indices for safe UTF-8 slicing
                         let mut spans = Vec::new();
                         let line_len = line.len();
 
                         if actual_line_idx == sel_start.line && actual_line_idx == sel_end.line {
                             // Single line selection
-                            let start_col = sel_start.col.min(line_len);
-                            let end_col = sel_end.col.min(line_len);
+                            let start_byte = display_col_to_byte_idx(line, sel_start.col);
+                            let end_byte = display_col_to_byte_idx(line, sel_end.col);
 
-                            if start_col > 0 {
-                                spans.push(Span::styled(line[..start_col].to_string(), base_style));
+                            if start_byte > 0 {
+                                spans.push(Span::styled(line[..start_byte].to_string(), base_style));
                             }
-                            if end_col > start_col {
+                            if end_byte > start_byte {
                                 spans.push(Span::styled(
-                                    line[start_col..end_col].to_string(),
+                                    line[start_byte..end_byte].to_string(),
                                     base_style.bg(Color::DarkGray),
                                 ));
                             }
-                            if end_col < line_len {
-                                spans.push(Span::styled(line[end_col..].to_string(), base_style));
+                            if end_byte < line_len {
+                                spans.push(Span::styled(line[end_byte..].to_string(), base_style));
                             }
                         } else if actual_line_idx == sel_start.line {
                             // First line of multi-line selection
-                            let start_col = sel_start.col.min(line_len);
-                            if start_col > 0 {
-                                spans.push(Span::styled(line[..start_col].to_string(), base_style));
+                            let start_byte = display_col_to_byte_idx(line, sel_start.col);
+                            if start_byte > 0 {
+                                spans.push(Span::styled(line[..start_byte].to_string(), base_style));
                             }
                             spans.push(Span::styled(
-                                line[start_col..].to_string(),
+                                line[start_byte..].to_string(),
                                 base_style.bg(Color::DarkGray),
                             ));
                         } else if actual_line_idx == sel_end.line {
                             // Last line of multi-line selection
-                            let end_col = sel_end.col.min(line_len);
-                            if end_col > 0 {
+                            let end_byte = display_col_to_byte_idx(line, sel_end.col);
+                            if end_byte > 0 {
                                 spans.push(Span::styled(
-                                    line[..end_col].to_string(),
+                                    line[..end_byte].to_string(),
                                     base_style.bg(Color::DarkGray),
                                 ));
                             }
-                            if end_col < line_len {
-                                spans.push(Span::styled(line[end_col..].to_string(), base_style));
+                            if end_byte < line_len {
+                                spans.push(Span::styled(line[end_byte..].to_string(), base_style));
                             }
                         } else {
                             // Middle line - entire line is selected

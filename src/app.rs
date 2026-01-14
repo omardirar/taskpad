@@ -12,7 +12,7 @@ const MAX_HISTORY_ENTRIES: usize = 100;
 /// Converts a display column (screen position) to a byte index in the string.
 /// Display columns account for character widths (e.g., CJK characters take 2 columns).
 /// Returns the byte index at which the cumulative display width reaches or exceeds the target column.
-fn display_col_to_byte_idx(s: &str, display_col: usize) -> usize {
+pub fn display_col_to_byte_idx(s: &str, display_col: usize) -> usize {
     let mut current_width = 0;
     for (byte_idx, ch) in s.char_indices() {
         if current_width >= display_col {
