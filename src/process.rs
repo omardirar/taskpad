@@ -109,8 +109,23 @@ pub fn run_task(task: Task, log_tx: Sender<String>, status_tx: Sender<TaskStatus
         // Wait for the child process to exit
         match child.wait() {
             Ok(status) => {
-                // Give a moment for remaining output to be processed
-                thread::sleep(std::time::Duration::from_millis(100));
+                // Give a brief moment for remaining output to be processed.
+                //
+                // The stdout/stderr reader threads forward lines through `merged_tx` to the
+                // log channel. When the child exits, there can be a small delay before those
+                // threads finish reading and sending any final lines. This fixed sleep acts
+                // as a simple heuristic to reduce the chance of truncating late output before
+                // we log the final exit status.
+                //
+                // The 50ms value is a tradeoff between:
+                // - Reliability: a longer delay gives the reader threads more time to drain
+                //   remaining output.
+                // - Latency: a shorter delay reduces how long callers wait after the process
+                //   has actually exited.
+                //
+                // If you change this value, consider the environment (typical process runtime,
+                // expected output volume, and I/O performance) and balance these concerns.
+                thread::sleep(std::time::Duration::from_millis(50));
 
                 let exit_code = status.code().unwrap_or(-1);
                 let _ = log_tx.send(format!("Task exited with code: {}", exit_code));

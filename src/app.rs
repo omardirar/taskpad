@@ -1,4 +1,81 @@
 /// Core application data structures and state management for Taskpad.
+use std::collections::HashMap;
+use std::time::SystemTime;
+use unicode_width::UnicodeWidthChar;
+
+/// Maximum number of log lines to store per task to prevent unbounded memory growth.
+const MAX_LOG_LINES_PER_TASK: usize = 10_000;
+
+/// Maximum number of history entries to store to prevent unbounded memory growth.
+const MAX_HISTORY_ENTRIES: usize = 100;
+
+/// Returns the display width of a string, accounting for character widths.
+/// Wide characters (e.g., CJK, emoji) count as 2 columns.
+pub fn str_display_width(s: &str) -> usize {
+    s.chars().map(|ch| ch.width().unwrap_or(0)).sum()
+}
+
+/// Converts a display column (screen position) to a byte index in the string.
+/// Display columns account for character widths (e.g., CJK characters take 2 columns).
+/// Returns the byte index at which the cumulative display width reaches or exceeds the target column.
+pub fn display_col_to_byte_idx(s: &str, display_col: usize) -> usize {
+    let mut current_width = 0;
+    for (byte_idx, ch) in s.char_indices() {
+        if current_width >= display_col {
+            return byte_idx;
+        }
+        current_width += ch.width().unwrap_or(0);
+    }
+    // If we've gone through all characters, return the string length
+    s.len()
+}
+
+/// Represents a position in the log pane (line index, column index)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LogPosition {
+    pub line: usize,
+    pub col: usize,
+}
+
+impl LogPosition {
+    pub fn new(line: usize, col: usize) -> Self {
+        Self { line, col }
+    }
+}
+
+/// Text selection state in the log pane
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LogSelection {
+    pub start: LogPosition,
+    pub end: LogPosition,
+}
+
+impl LogSelection {
+    pub fn new(start: LogPosition, end: LogPosition) -> Self {
+        Self { start, end }
+    }
+
+    /// Returns the selection in normalized order (start before end)
+    pub fn normalized(&self) -> (LogPosition, LogPosition) {
+        if self.start.line < self.end.line
+            || (self.start.line == self.end.line && self.start.col <= self.end.col)
+        {
+            (self.start, self.end)
+        } else {
+            (self.end, self.start)
+        }
+    }
+}
+
+/// Represents which pane currently has focus
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FocusedPane {
+    /// Tasks pane is focused (default)
+    Tasks,
+    /// History pane is focused
+    History,
+}
+
 /// Task runner type.
 #[derive(Debug, Clone, PartialEq)]
 pub enum TaskRunner {
@@ -100,6 +177,26 @@ impl RunningTask {
     }
 }
 
+/// Auto-scroll direction during drag selection
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DragScrollDirection {
+    Up,
+    Down,
+}
+
+/// Represents a task execution entry in history
+#[derive(Debug, Clone)]
+pub struct HistoryEntry {
+    /// The task that was executed
+    pub task_name: String,
+    /// The runner used
+    pub runner: TaskRunner,
+    /// When the task was executed
+    pub timestamp: SystemTime,
+    /// Final status of the task
+    pub status: TaskStatus,
+}
+
 /// Main application state.
 ///
 /// This structure holds all state needed to render the UI and handle events.
@@ -112,12 +209,42 @@ pub struct AppState {
     pub selected_index: usize,
     /// The currently running or last run task (if any)
     pub running_task: Option<RunningTask>,
+    /// Log history for each task (keyed by task ID)
+    pub task_logs: HashMap<usize, Vec<String>>,
+    /// Text selections for each task (keyed by task ID)
+    pub task_selections: HashMap<usize, LogSelection>,
     /// Temporary status message for errors, hints, etc.
     pub message: Option<String>,
     /// Flag to indicate the user wants to quit
     pub quitting: bool,
     /// Vertical scroll offset for the task list pane
     pub task_scroll_offset: usize,
+    /// Whether to show the info box for the selected task
+    pub show_info: bool,
+    /// Scroll offset for the info box
+    pub info_scroll_offset: usize,
+    /// Scroll offset for the history container
+    pub history_scroll_offset: usize,
+    /// Scroll offset for the log pane (0 = showing latest logs)
+    pub log_scroll_offset: usize,
+    /// Whether auto-scroll is enabled for logs (disabled when user manually scrolls)
+    pub log_auto_scroll: bool,
+    /// Whether we're actively selecting text (mouse is down)
+    pub is_selecting: bool,
+    /// Auto-scroll direction during drag selection (if any)
+    pub drag_scroll_direction: Option<DragScrollDirection>,
+    /// Last mouse position during drag (for updating selection during auto-scroll)
+    pub last_drag_position: Option<LogPosition>,
+    /// Whether to show the history container
+    pub show_history: bool,
+    /// History of executed tasks
+    pub task_history: Vec<HistoryEntry>,
+    /// Which pane currently has focus (Tasks or History)
+    pub focused_pane: FocusedPane,
+    /// Selected index in history pane (None if no selection)
+    pub selected_history_index: Option<usize>,
+    /// Logs stored per history entry (keyed by history entry index in reversed order)
+    pub history_logs: HashMap<usize, Vec<String>>,
 }
 
 impl AppState {
@@ -127,9 +254,24 @@ impl AppState {
             tasks,
             selected_index: 0,
             running_task: None,
+            task_logs: HashMap::new(),
+            task_selections: HashMap::new(),
             message: None,
             quitting: false,
             task_scroll_offset: 0,
+            show_info: false,
+            info_scroll_offset: 0,
+            history_scroll_offset: 0,
+            log_scroll_offset: 0,
+            log_auto_scroll: true,
+            is_selecting: false,
+            drag_scroll_direction: None,
+            last_drag_position: None,
+            show_history: false,
+            task_history: Vec::new(),
+            focused_pane: FocusedPane::Tasks,
+            selected_history_index: None,
+            history_logs: HashMap::new(),
         }
     }
 
@@ -139,9 +281,24 @@ impl AppState {
             tasks: Vec::new(),
             selected_index: 0,
             running_task: None,
+            task_logs: HashMap::new(),
+            task_selections: HashMap::new(),
             message: Some(message),
             quitting: false,
             task_scroll_offset: 0,
+            show_info: false,
+            info_scroll_offset: 0,
+            history_scroll_offset: 0,
+            log_scroll_offset: 0,
+            log_auto_scroll: true,
+            is_selecting: false,
+            drag_scroll_direction: None,
+            last_drag_position: None,
+            show_history: false,
+            task_history: Vec::new(),
+            focused_pane: FocusedPane::Tasks,
+            selected_history_index: None,
+            history_logs: HashMap::new(),
         }
     }
 
@@ -181,22 +338,64 @@ impl AppState {
     /// Appends a log line to the currently running task
     pub fn append_log(&mut self, line: String) {
         if let Some(ref mut running) = self.running_task {
+            // Append to the task-specific log history
+            let logs = self.task_logs.entry(running.task.id).or_default();
+            logs.push(line.clone());
+
+            // Enforce per-task log limit to prevent unbounded memory growth
+            if logs.len() > MAX_LOG_LINES_PER_TASK {
+                let excess = logs.len() - MAX_LOG_LINES_PER_TASK;
+                logs.drain(0..excess);
+            }
+
+            // Also append to the running task for compatibility
             running.append_log(line);
         }
     }
 
     /// Updates the status of the currently running task
     pub fn update_task_status(&mut self, status: TaskStatus) {
+        // First, extract the data we need for history (if applicable)
+        let history_data = if !matches!(status, TaskStatus::Running) {
+            self.running_task
+                .as_ref()
+                .map(|running| (running.task.name.clone(), running.task.runner.clone()))
+        } else {
+            None
+        };
+
+        // Update the running task status
         if let Some(ref mut running) = self.running_task {
             running.set_status(status.clone());
             self.message = Some(status.display_string());
         }
+
+        // Add to history when task completes (success or failure)
+        if let Some((task_name, runner)) = history_data {
+            self.add_to_history(task_name, runner, status);
+
+            // Store logs for this history entry
+            if let Some(running) = &self.running_task {
+                let logs = running.log_lines.clone();
+                self.store_history_logs(logs);
+            }
+        }
     }
 
-    /// Clears the logs of the current or last run task
+    /// Clears all task logs
     pub fn clear_logs(&mut self) {
+        self.task_logs.clear();
         if let Some(ref mut running) = self.running_task {
             running.clear_logs();
+        }
+    }
+
+    /// Gets the logs for the currently selected task
+    pub fn selected_task_logs(&self) -> Option<&Vec<String>> {
+        if let Some(task) = self.selected_task() {
+            self.task_logs.get(&task.id)
+        } else {
+            None
         }
     }
 
@@ -231,6 +430,17 @@ impl AppState {
         }
     }
 
+    /// Adjusts history scroll offset to ensure the selected history entry is visible
+    pub fn adjust_history_scroll(&mut self, visible_height: usize) {
+        if let Some(selected) = self.selected_history_index {
+            if selected < self.history_scroll_offset {
+                self.history_scroll_offset = selected;
+            } else if selected >= self.history_scroll_offset + visible_height {
+                self.history_scroll_offset = selected - visible_height + 1;
+            }
+        }
+    }
+
     /// Sets a temporary message
     pub fn set_message(&mut self, message: String) {
         self.message = Some(message);
@@ -239,6 +449,272 @@ impl AppState {
     /// Marks the app for quitting
     pub fn quit(&mut self) {
         self.quitting = true;
+    }
+
+    /// Toggles the info box display
+    pub fn toggle_info(&mut self) {
+        self.show_info = !self.show_info;
+    }
+
+    /// Toggles the history container display
+    pub fn toggle_history(&mut self) {
+        self.show_history = !self.show_history;
+        // Reset focus to Tasks when hiding history
+        if !self.show_history {
+            self.focused_pane = FocusedPane::Tasks;
+            self.selected_history_index = None;
+        }
+    }
+
+    /// Switches focus to Tasks pane
+    pub fn focus_tasks(&mut self) {
+        self.focused_pane = FocusedPane::Tasks;
+        self.clear_selection();
+    }
+
+    /// Switches focus to History pane (if history is visible and not empty)
+    pub fn focus_history(&mut self) {
+        if self.show_history && !self.task_history.is_empty() {
+            self.focused_pane = FocusedPane::History;
+            self.clear_selection();
+            // Initialize selection to most recent entry if not set
+            if self.selected_history_index.is_none() {
+                self.selected_history_index = Some(0);
+            }
+        }
+    }
+
+    /// Returns true if History pane currently has focus
+    pub fn is_history_focused(&self) -> bool {
+        self.focused_pane == FocusedPane::History
+    }
+
+    /// Moves history selection up (to newer entries)
+    pub fn move_history_selection_up(&mut self) {
+        if let Some(current) = self.selected_history_index
+            && current > 0
+        {
+            self.selected_history_index = Some(current - 1);
+        }
+    }
+
+    /// Moves history selection down (to older entries)
+    pub fn move_history_selection_down(&mut self) {
+        if let Some(current) = self.selected_history_index
+            && current < self.task_history.len().saturating_sub(1)
+        {
+            self.selected_history_index = Some(current + 1);
+        }
+    }
+
+    /// Returns the currently selected history entry (if any)
+    pub fn selected_history_entry(&self) -> Option<&HistoryEntry> {
+        let idx = self.selected_history_index?;
+        // History is stored chronologically but displayed reversed
+        let actual_idx = self.task_history.len().checked_sub(idx + 1)?;
+        self.task_history.get(actual_idx)
+    }
+
+    /// Gets the logs for the currently selected history entry
+    pub fn get_history_logs(&self) -> Option<&Vec<String>> {
+        let idx = self.selected_history_index?;
+        self.history_logs.get(&idx)
+    }
+
+    /// Adds a task execution to history, removing oldest entries if limit exceeded
+    pub fn add_to_history(&mut self, task_name: String, runner: TaskRunner, status: TaskStatus) {
+        let entry = HistoryEntry {
+            task_name,
+            runner,
+            timestamp: SystemTime::now(),
+            status,
+        };
+        self.task_history.push(entry);
+
+        // Remove oldest entries if we exceed the limit
+        while self.task_history.len() > MAX_HISTORY_ENTRIES {
+            self.task_history.remove(0);
+        }
+    }
+
+    /// Stores logs for the most recent history entry
+    /// Shifts all existing history log indices up by 1 and removes entries beyond MAX_HISTORY_ENTRIES
+    fn store_history_logs(&mut self, logs: Vec<String>) {
+        // Shift all existing history log entries up by 1, dropping entries beyond limit
+        let mut new_history_logs = HashMap::new();
+        for (idx, old_logs) in &self.history_logs {
+            let new_idx = idx + 1;
+            if new_idx < MAX_HISTORY_ENTRIES {
+                new_history_logs.insert(new_idx, old_logs.clone());
+            }
+        }
+
+        // Store new logs at index 0 (most recent)
+        new_history_logs.insert(0, logs);
+
+        self.history_logs = new_history_logs;
+    }
+
+    /// Scrolls the log view up by the given number of lines
+    pub fn scroll_logs_up(&mut self, lines: usize) {
+        self.log_scroll_offset = self.log_scroll_offset.saturating_add(lines);
+        self.log_auto_scroll = false;
+    }
+
+    /// Scrolls the log view down by the given number of lines
+    pub fn scroll_logs_down(&mut self, lines: usize) {
+        self.log_scroll_offset = self.log_scroll_offset.saturating_sub(lines);
+        if self.log_scroll_offset == 0 {
+            self.log_auto_scroll = true;
+        }
+    }
+
+    /// Scrolls to the bottom of logs and re-enables auto-scroll
+    pub fn scroll_logs_to_bottom(&mut self) {
+        self.log_scroll_offset = 0;
+        self.log_auto_scroll = true;
+    }
+
+    /// Scrolls the info view up by the given number of lines (see earlier content)
+    pub fn scroll_info_up(&mut self, lines: usize) {
+        self.info_scroll_offset = self.info_scroll_offset.saturating_sub(lines);
+    }
+
+    /// Scrolls the info view down by the given number of lines (see later content)
+    pub fn scroll_info_down(&mut self, lines: usize) {
+        self.info_scroll_offset = self.info_scroll_offset.saturating_add(lines);
+    }
+
+    /// Starts running a task and resets log scrolling for new output
+    pub fn start_task_with_scroll_reset(&mut self, task: Task) {
+        self.start_task(task);
+        self.scroll_logs_to_bottom();
+    }
+
+    /// Gets the selection for the currently selected task
+    pub fn current_task_selection(&self) -> Option<&LogSelection> {
+        let task = self.selected_task()?;
+        self.task_selections.get(&task.id)
+    }
+
+    /// Starts a text selection at the given position for the current task
+    pub fn start_selection(&mut self, pos: LogPosition) {
+        if let Some(task) = self.selected_task() {
+            let task_id = task.id;
+            self.task_selections
+                .insert(task_id, LogSelection::new(pos, pos));
+            self.is_selecting = true;
+        }
+    }
+
+    /// Updates the selection end position (during drag) for the current task
+    pub fn update_selection(&mut self, pos: LogPosition) {
+        if let Some(task) = self.selected_task() {
+            let task_id = task.id;
+            if let Some(selection) = self.task_selections.get_mut(&task_id) {
+                selection.end = pos;
+            }
+        }
+    }
+
+    /// Ends the selection
+    pub fn end_selection(&mut self) {
+        self.is_selecting = false;
+        self.drag_scroll_direction = None;
+        self.last_drag_position = None;
+    }
+
+    /// Clears the selection for the current task
+    pub fn clear_selection(&mut self) {
+        if let Some(task_id) = self.selected_task().map(|t| t.id) {
+            self.task_selections.remove(&task_id);
+        }
+        self.is_selecting = false;
+    }
+
+    /// Sets the drag scroll direction and last position
+    pub fn set_drag_scroll(
+        &mut self,
+        direction: Option<DragScrollDirection>,
+        position: Option<LogPosition>,
+    ) {
+        self.drag_scroll_direction = direction;
+        self.last_drag_position = position;
+    }
+
+    // TODO: increase/decrease scroll speed based on how far outside bounds the mouse is
+    /// Performs auto-scroll during drag selection
+    pub fn perform_drag_scroll(&mut self) {
+        if let Some(direction) = self.drag_scroll_direction {
+            match direction {
+                DragScrollDirection::Up => {
+                    self.scroll_logs_up(1);
+                }
+                DragScrollDirection::Down => {
+                    self.scroll_logs_down(1);
+                }
+            }
+
+            // Update selection to the last known position after scrolling
+            if let Some(pos) = self.last_drag_position {
+                self.update_selection(pos);
+            }
+        }
+    }
+
+    /// Gets the selected text from logs for the current task or history entry
+    pub fn get_selected_text(&self) -> Option<String> {
+        let task = self.selected_task()?;
+        let selection = self.task_selections.get(&task.id)?;
+        // Get logs based on focus: history logs if history focused, otherwise current task logs
+        let log_lines = if self.is_history_focused() {
+            self.get_history_logs()?
+        } else {
+            self.selected_task_logs()?
+        };
+
+        let (start, end) = selection.normalized();
+
+        if start.line >= log_lines.len() {
+            return None;
+        }
+
+        let mut result = String::new();
+
+        if start.line == end.line {
+            // Single line selection
+            if let Some(line) = log_lines.get(start.line) {
+                // Convert display columns to byte indices for safe UTF-8 slicing
+                let start_byte = display_col_to_byte_idx(line, start.col);
+                let end_byte = display_col_to_byte_idx(line, end.col);
+                result.push_str(&line[start_byte..end_byte]);
+            }
+        } else {
+            // Multi-line selection
+            for line_idx in start.line..=end.line.min(log_lines.len().saturating_sub(1)) {
+                if let Some(line) = log_lines.get(line_idx) {
+                    if line_idx == start.line {
+                        // First line: from start.col to end
+                        let start_byte = display_col_to_byte_idx(line, start.col);
+                        result.push_str(&line[start_byte..]);
+                    } else if line_idx == end.line {
+                        // Last line: from beginning to end.col
+                        let end_byte = display_col_to_byte_idx(line, end.col);
+                        result.push_str(&line[..end_byte]);
+                    } else {
+                        // Middle lines: entire line
+                        result.push_str(line);
+                    }
+
+                    // Add newline between lines (except after last line)
+                    if line_idx < end.line.min(log_lines.len().saturating_sub(1)) {
+                        result.push('\n');
+                    }
+                }
+            }
+        }
+
+        Some(result)
     }
 }
 
