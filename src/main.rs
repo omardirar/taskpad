@@ -188,7 +188,8 @@ fn get_left_region(app: &AppState, row: u16, terminal_height: u16) -> LeftRegion
 
     if app.show_history {
         // Tasks at top, history (8 lines) at bottom
-        let history_height = 8;
+        // Cap history_height to ensure task list gets at least 1 row
+        let history_height = 8.min(content_height.saturating_sub(1));
         let history_start = 1 + content_height.saturating_sub(history_height);
 
         if row < history_start {
@@ -415,9 +416,9 @@ fn screen_to_log_position(
     // If info box is visible, log pane starts below it
     let log_inner_left = TASK_LIST_WIDTH + 1;
     let log_inner_top = if app.show_info {
-        2 + 6 // Top bar (1) + info box (6) + log pane border top (1) = 8, but we already count 2 for top bar + border
+        2 + 6 // 2 = top bar (1) + border below top bar (1), then +6 for the info box height ⇒ log inner top at row 8
     } else {
-        2 // Top bar (1) + log pane border top (1)
+        2 // top bar (1) + border below top bar (1) ⇒ log inner top directly under the border
     };
 
     if screen_col < log_inner_left || screen_row < log_inner_top {
