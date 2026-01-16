@@ -9,6 +9,7 @@ use color_eyre::eyre::Result;
 pub mod just;
 pub mod make;
 pub mod npm;
+pub mod cargo;
 
 /// Discovers tasks from all available sources.
 ///
@@ -53,6 +54,15 @@ pub fn discover_all_tasks() -> Result<Vec<Task>> {
     // Try to discover npm/pnpm/yarn scripts
     if let Ok(npm_tasks) = npm::discover_tasks() {
         for mut task in npm_tasks {
+            task.id = next_id;
+            next_id += 1;
+            all_tasks.push(task);
+        }
+    }
+
+    // Try to discover Cargo tasks
+    if let Ok(cargo_tasks) = cargo::discover_tasks() {
+        for mut task in cargo_tasks {
             task.id = next_id;
             next_id += 1;
             all_tasks.push(task);
