@@ -53,21 +53,19 @@ pub fn discover_tasks() -> Result<Vec<Task>> {
     }
 
     // Convert scripts to tasks
-    let mut tasks = Vec::new();
-    let mut task_id = 0;
-
-    for (name, command) in scripts {
-        let description = command.as_str().map(|s| s.to_string());
-
-        tasks.push(Task {
-            id: task_id,
-            name: name.clone(),
-            description,
-            runner: runner.clone(),
-        });
-
-        task_id += 1;
-    }
+    let tasks = scripts
+        .into_iter()
+        .enumerate()
+        .map(|(task_id, (name, command))| {
+            let description = command.as_str().map(|s| s.to_string());
+            Task {
+                id: task_id,
+                name: name.clone(),
+                description,
+                runner: runner.clone(),
+            }
+        })
+        .collect();
 
     Ok(tasks)
 }
@@ -88,22 +86,16 @@ pub fn discover_tasks() -> Result<Vec<Task>> {
 /// Returns an error if no package manager is available.
 fn detect_package_manager() -> Result<TaskRunner> {
     // Check for lock files to determine which package manager is being used
-    if Path::new("pnpm-lock.yaml").exists() {
-        if is_command_available("pnpm") {
-            return Ok(TaskRunner::Pnpm);
-        }
+    if Path::new("pnpm-lock.yaml").exists() && is_command_available("pnpm") {
+        return Ok(TaskRunner::Pnpm);
     }
 
-    if Path::new("yarn.lock").exists() {
-        if is_command_available("yarn") {
-            return Ok(TaskRunner::Yarn);
-        }
+    if Path::new("yarn.lock").exists() && is_command_available("yarn") {
+        return Ok(TaskRunner::Yarn);
     }
 
-    if Path::new("package-lock.json").exists() {
-        if is_command_available("npm") {
-            return Ok(TaskRunner::Npm);
-        }
+    if Path::new("package-lock.json").exists() && is_command_available("npm") {
+        return Ok(TaskRunner::Npm);
     }
 
     // Fallback: no lock file found, try npm as default
@@ -136,8 +128,6 @@ fn is_command_available(command: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_detect_package_manager_with_npm_lock() {
         // This test would need to mock filesystem and command execution

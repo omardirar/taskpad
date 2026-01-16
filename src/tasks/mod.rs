@@ -6,11 +6,11 @@
 use crate::app::Task;
 use color_eyre::eyre::Result;
 
+pub mod cargo;
+pub mod invoke;
 pub mod just;
 pub mod make;
 pub mod npm;
-pub mod cargo;
-pub mod invoke;
 pub mod poe;
 pub mod rake;
 

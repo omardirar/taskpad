@@ -91,7 +91,12 @@ fn parse_poe_output(output: &str) -> Result<Vec<Task>> {
         }
 
         // If we hit another section header (all caps), we're done with tasks
-        if in_task_section && !trimmed.is_empty() && trimmed.chars().all(|c| c.is_uppercase() || c.is_whitespace()) {
+        if in_task_section
+            && !trimmed.is_empty()
+            && trimmed
+                .chars()
+                .all(|c| c.is_uppercase() || c.is_whitespace())
+        {
             break;
         }
 
@@ -183,10 +188,7 @@ OPTIONS
         assert_eq!(tasks[1].description, Some("Run tests".to_string()));
 
         assert_eq!(tasks[2].name, "deploy");
-        assert_eq!(
-            tasks[2].description,
-            Some("Deploy application".to_string())
-        );
+        assert_eq!(tasks[2].description, Some("Deploy application".to_string()));
     }
 
     #[test]

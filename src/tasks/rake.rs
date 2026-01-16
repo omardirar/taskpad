@@ -34,7 +34,9 @@ pub fn discover_tasks() -> Result<Vec<Task>> {
             ));
         }
         Ok(output) if !output.status.success() => {
-            return Err(eyre!("rake command failed. Please check your installation."));
+            return Err(eyre!(
+                "rake command failed. Please check your installation."
+            ));
         }
         _ => {}
     }

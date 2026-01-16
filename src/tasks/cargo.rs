@@ -77,14 +77,13 @@ fn discover_cargo_make_tasks() -> Result<Vec<Task>> {
     }
 
     // Check if cargo-make is available
-    let cargo_make_check = Command::new("cargo")
-        .arg("make")
-        .arg("--version")
-        .output();
+    let cargo_make_check = Command::new("cargo").arg("make").arg("--version").output();
 
     match cargo_make_check {
         Err(_) => {
-            return Err(eyre!("cargo-make not found. Install with: cargo install cargo-make"));
+            return Err(eyre!(
+                "cargo-make not found. Install with: cargo install cargo-make"
+            ));
         }
         Ok(output) if !output.status.success() => {
             return Err(eyre!("cargo-make not available"));
@@ -101,7 +100,10 @@ fn discover_cargo_make_tasks() -> Result<Vec<Task>> {
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(eyre!("cargo make --list-all-steps failed: {}", stderr.trim()));
+        return Err(eyre!(
+            "cargo make --list-all-steps failed: {}",
+            stderr.trim()
+        ));
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
