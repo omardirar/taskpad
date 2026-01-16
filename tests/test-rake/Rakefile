@@ -1,0 +1,33 @@
+# Sample Rakefile for testing taskpad
+
+desc "Build the project"
+task :build do
+  puts "Building project..."
+end
+
+desc "Run tests"
+task :test do
+  puts "Running tests..."
+end
+
+desc "Deploy to production"
+task :deploy do
+  puts "Deploying..."
+end
+
+desc "Clean build artifacts"
+task :clean do
+  puts "Cleaning..."
+end
+
+namespace :db do
+  desc "Run database migrations"
+  task :migrate do
+    puts "Running migrations..."
+  end
+
+  desc "Seed the database"
+  task :seed do
+    puts "Seeding database..."
+  end
+end

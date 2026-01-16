@@ -83,6 +83,22 @@ pub enum TaskRunner {
     Just,
     /// Make build tool
     Make,
+    /// npm package manager
+    Npm,
+    /// pnpm package manager
+    Pnpm,
+    /// Yarn package manager
+    Yarn,
+    /// Cargo build tool (standard commands)
+    Cargo,
+    /// cargo-make task runner
+    CargoMake,
+    /// Python Invoke task runner
+    Invoke,
+    /// Python Poe the Poet task runner
+    Poe,
+    /// Ruby Rake task runner
+    Rake,
 }
 
 impl TaskRunner {
@@ -91,6 +107,14 @@ impl TaskRunner {
         match self {
             TaskRunner::Just => "[just]",
             TaskRunner::Make => "[make]",
+            TaskRunner::Npm => "[npm]",
+            TaskRunner::Pnpm => "[pnpm]",
+            TaskRunner::Yarn => "[yarn]",
+            TaskRunner::Cargo => "[cargo]",
+            TaskRunner::CargoMake => "[cargo-make]",
+            TaskRunner::Invoke => "[invoke]",
+            TaskRunner::Poe => "[poe]",
+            TaskRunner::Rake => "[rake]",
         }
     }
 
@@ -99,6 +123,23 @@ impl TaskRunner {
         match self {
             TaskRunner::Just => "just",
             TaskRunner::Make => "make",
+            TaskRunner::Npm => "npm",
+            TaskRunner::Pnpm => "pnpm",
+            TaskRunner::Yarn => "yarn",
+            TaskRunner::Cargo => "cargo",
+            TaskRunner::CargoMake => "cargo",
+            TaskRunner::Invoke => "invoke",
+            TaskRunner::Poe => "poe",
+            TaskRunner::Rake => "rake",
+        }
+    }
+
+    /// Returns additional arguments to pass before the task name
+    pub fn args(&self) -> Vec<&str> {
+        match self {
+            TaskRunner::Npm | TaskRunner::Pnpm | TaskRunner::Yarn => vec!["run"],
+            TaskRunner::CargoMake => vec!["make"],
+            _ => vec![],
         }
     }
 }

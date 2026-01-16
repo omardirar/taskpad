@@ -1,22 +1,32 @@
 /// Task discovery modules.
 ///
 /// This module provides functionality for discovering tasks from various sources.
-/// Supports both Just recipes and Make targets.
+/// Supports Just recipes, Make targets, npm/pnpm/yarn scripts, Cargo tasks,
+/// Python task runners (Invoke, Poe), and Rake tasks.
 use crate::app::Task;
 use color_eyre::eyre::Result;
 
+pub mod cargo;
+pub mod invoke;
 pub mod just;
 pub mod make;
+pub mod npm;
+pub mod poe;
+pub mod rake;
 
-/// Discovers tasks from all available sources (Just and Make).
+/// Discovers tasks from all available sources.
 ///
 /// This function attempts to discover tasks from:
 /// 1. Just recipes (if justfile exists)
 /// 2. Make targets (if Makefile exists)
+/// 3. npm/pnpm/yarn scripts (if package.json exists)
+/// 4. Cargo tasks (if cargo is available)
+/// 5. Python Invoke tasks (if invoke is available)
+/// 6. Python Poe tasks (if poe is available)
+/// 7. Rake tasks (if rake is available)
 ///
-/// Tasks from both sources are combined into a single list with unique IDs.
-/// If both sources are available, tasks are prefixed with [just] or [make]
-/// in the UI (handled by the TaskRunner in the Task struct).
+/// Tasks from all sources are combined into a single list with unique IDs.
+/// Tasks are prefixed in the UI based on their TaskRunner type.
 ///
 /// # Returns
 ///
@@ -44,9 +54,54 @@ pub fn discover_all_tasks() -> Result<Vec<Task>> {
         }
     }
 
+    // Try to discover npm/pnpm/yarn scripts
+    if let Ok(npm_tasks) = npm::discover_tasks() {
+        for mut task in npm_tasks {
+            task.id = next_id;
+            next_id += 1;
+            all_tasks.push(task);
+        }
+    }
+
+    // Try to discover Cargo tasks
+    if let Ok(cargo_tasks) = cargo::discover_tasks() {
+        for mut task in cargo_tasks {
+            task.id = next_id;
+            next_id += 1;
+            all_tasks.push(task);
+        }
+    }
+
+    // Try to discover Python Invoke tasks
+    if let Ok(invoke_tasks) = invoke::discover_tasks() {
+        for mut task in invoke_tasks {
+            task.id = next_id;
+            next_id += 1;
+            all_tasks.push(task);
+        }
+    }
+
+    // Try to discover Python Poe tasks
+    if let Ok(poe_tasks) = poe::discover_tasks() {
+        for mut task in poe_tasks {
+            task.id = next_id;
+            next_id += 1;
+            all_tasks.push(task);
+        }
+    }
+
+    // Try to discover Rake tasks
+    if let Ok(rake_tasks) = rake::discover_tasks() {
+        for mut task in rake_tasks {
+            task.id = next_id;
+            next_id += 1;
+            all_tasks.push(task);
+        }
+    }
+
     if all_tasks.is_empty() {
         return Err(color_eyre::eyre::eyre!(
-            "No tasks discovered. Please ensure you have either a justfile or Makefile in this directory."
+            "No tasks discovered. Please ensure you have a task file (justfile, Makefile, package.json, etc.) in this directory."
         ));
     }
 

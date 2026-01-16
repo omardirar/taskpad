@@ -1,0 +1,17 @@
+{
+  "name": "test-npm",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Running tests...\"",
+    "build": "echo \"Building project...\"",
+    "dev": "echo \"Starting dev server...\"",
+    "lint": "echo \"Running linter...\"",
+    "format": "echo \"Formatting code...\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
