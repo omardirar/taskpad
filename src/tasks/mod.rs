@@ -12,6 +12,7 @@ pub mod npm;
 pub mod cargo;
 pub mod invoke;
 pub mod poe;
+pub mod rake;
 
 /// Discovers tasks from all available sources.
 ///
@@ -83,6 +84,15 @@ pub fn discover_all_tasks() -> Result<Vec<Task>> {
     // Try to discover Python Poe tasks
     if let Ok(poe_tasks) = poe::discover_tasks() {
         for mut task in poe_tasks {
+            task.id = next_id;
+            next_id += 1;
+            all_tasks.push(task);
+        }
+    }
+
+    // Try to discover Rake tasks
+    if let Ok(rake_tasks) = rake::discover_tasks() {
+        for mut task in rake_tasks {
             task.id = next_id;
             next_id += 1;
             all_tasks.push(task);
