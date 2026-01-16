@@ -33,6 +33,7 @@ This document outlines the planned features and improvements for Taskpad. The ro
 
 ### Configuration
 - **Config file support**: TOML/YAML configuration in `~/.config/taskpad/`
+- **Task Arguments:** Add dialogue to pass optional arguments/parameters to tasks.
 - **Theme support**: Customizable colors and UI elements
 - **Default task runner priority**: Choose which runners to show first
 - **Output formatting options**: Control log display style
