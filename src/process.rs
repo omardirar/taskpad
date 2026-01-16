@@ -41,6 +41,7 @@ pub fn run_task(task: Task, log_tx: Sender<String>, status_tx: Sender<TaskStatus
         // Spawn the appropriate command based on the task runner
         let command = task.runner.command();
         let mut child = match Command::new(command)
+            .args(task.runner.args())
             .arg(&task.name)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
