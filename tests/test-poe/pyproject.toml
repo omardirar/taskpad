@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "test-poe"
+version = "0.1.0"
+description = "Sample project for testing Poe the Poet with taskpad"
+
+[tool.poe.tasks]
+build = "echo 'Building project...'"
+test = "echo 'Running tests...'"
+lint = "echo 'Running linter...'"
+format = "echo 'Formatting code...'"
+deploy = "echo 'Deploying...'"
+
+[tool.poe.tasks.clean]
+cmd = "echo 'Cleaning build artifacts...'"
+help = "Remove build artifacts and cache files"
