@@ -143,9 +143,42 @@ fix: resolve panic when justfile is empty
 docs: update installation instructions
 ```
 
+## Contribution Workflow
+
+### For External Contributors
+
+If you're not a maintainer of this repository:
+
+1. **Fork the repository** to your own GitHub account (required - you don't have direct write access)
+2. **Clone your fork** locally
+   ```bash
+   git clone https://github.com/YOUR-USERNAME/taskpad.git
+   cd taskpad
+   ```
+3. **Create a feature branch** from `main`
+   ```bash
+   git checkout -b feat/your-feature-name
+   ```
+4. **Make your changes** following the guidelines above
+5. **Push to your fork**
+   ```bash
+   git push origin feat/your-feature-name
+   ```
+6. **Open a pull request** from your fork to the main repository
+7. **Wait for maintainer review** - only maintainers can approve and merge PRs
+
+### For Maintainers
+
+If you have maintainer/admin access:
+
+- You have direct push access to the repository
+- You can approve and merge pull requests
+- Follow branch protection rules (create PRs for major changes)
+- Ensure CI passes before merging
+
 ## Pull Request Process
 
-1. **Fork the repository** and create a new branch from `main`
+1. **Fork the repository** (if external contributor) and create a new branch from `main`
 2. **Make your changes** following the guidelines above
 3. **Test your changes** thoroughly
 4. **Add appropriate labels** to your PR:
@@ -156,6 +189,7 @@ docs: update installation instructions
    - `docs` - Documentation changes
    - `performance` - Performance improvements
 5. **Submit your PR** with a clear description of the changes
+6. **Wait for approval** - maintainers will review and approve your PR
 
 ### PR Labels
 
